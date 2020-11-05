@@ -1,0 +1,17 @@
+examples/* /usr/share/pycoral/examples/
+test_data/COPYRIGHT /usr/share/pycoral/examples/images
+test_data/bird.bmp /usr/share/pycoral/examples/images
+test_data/cat.bmp /usr/share/pycoral/examples/images
+test_data/grace_hopper.bmp /usr/share/pycoral/examples/images
+test_data/parrot.jpg /usr/share/pycoral/examples/images
+test_data/sunflower.bmp /usr/share/pycoral/examples/images
+test_data/deeplabv3_mnv2_pascal_quant_edgetpu.tflite /usr/share/pycoral/examples/models
+test_data/ssd_mobilenet_v1_coco_quant_postprocess_edgetpu.tflite /usr/share/pycoral/examples/models
+test_data/ssd_mobilenet_v2_coco_quant_postprocess_edgetpu.tflite /usr/share/pycoral/examples/models
+test_data/ssd_mobilenet_v2_face_quant_postprocess_edgetpu.tflite /usr/share/pycoral/examples/models
+test_data/mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite /usr/share/pycoral/examples/models
+test_data/mobilenet_v1_1.0_224_quant_embedding_extractor_edgetpu.tflite /usr/share/pycoral/examples/models
+test_data/mobilenet_v2_1.0_224_quant_edgetpu.tflite /usr/share/pycoral/examples/models
+test_data/coco_labels.txt /usr/share/pycoral/examples/models
+test_data/imagenet_labels.txt /usr/share/pycoral/examples/models
+test_data/inat_bird_labels.txt /usr/share/pycoral/examples/models

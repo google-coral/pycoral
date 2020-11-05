@@ -1,0 +1,57 @@
+libedgetpu (15.0) stable; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Mon, 02 Nov 2020 10:58:23 -0800
+libedgetpu (14.1) stable; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Tue, 07 Jul 2020 13:47:32 -0700
+libedgetpu (14.0) stable; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Wed, 25 Mar 2020 14:25:24 -0700
+libedgetpu (13.0) stable; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Tue, 28 Jan 2020 15:58:19 -0700
+libedgetpu (12.1-1) mendel-chef; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Wed, 30 Oct 2019 15:58:16 -0700
+libedgetpu (12-1) mendel-chef; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Mon, 16 Sep 2019 13:27:18 -0700
+libedgetpu (11-1) mendel-chef; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Mon, 15 Jul 2019 15:52:14 -0700
+libedgetpu (10-2) mendel-chef; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Thu, 18 Apr 2019 13:37:19 -0700
+libedgetpu (9-2) mendel-chef; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Wed, 03 Apr 2019 14:11:47 -0800
+libedgetpu (8-2) mendel-chef; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Tue, 02 Apr 2019 14:11:47 -0800
+libedgetpu (7-2) mendel-chef; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Thu, 28 Mar 2019 14:11:47 -0800
+libedgetpu (6-2) mendel-chef; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Tue, 19 Mar 2019 17:08:25 -0700
+libedgetpu (5-2) mendel-beaker; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Fri, 08 Mar 2019 14:11:47 -0800
+libedgetpu (4-2) mendel-beaker; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Wed, 27 Feb 2019 11:00:25 -0800
+libedgetpu (3-2) mendel-beaker; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Mon, 04 Feb 2019 11:20:13 -0800
+libedgetpu (3-1) mendel-beaker; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Mon, 28 Jan 2019 14:10:00 -0800
+libedgetpu (2-1) mendel-beaker; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Tue, 22 Jan 2019 10:42:07 -0800
+libedgetpu (1-1) mendel-beaker; urgency=medium
+  * New release
+ -- Coral <coral-support@google.com>  Wed, 16 Jan 2019 12:00:00 -0800
+libedgetpu (0.1) UNRELEASED; urgency=medium
+  * Initial release.
+ -- Coral <coral-support@google.com>  Mon, 04 Jun 2018 16:14:00 -0800

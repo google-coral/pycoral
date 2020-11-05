@@ -1,0 +1,9 @@
+[submodule "libedgetpu"]
+  path = libedgetpu
+  url = https://github.com/google-coral/libedgetpu
+[submodule "test_data"]
+  path = test_data
+  url = https://github.com/google-coral/test_data
+[submodule "libcoral"]
+  path = libcoral
+  url = https://github.com/google-coral/libcoral

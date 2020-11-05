@@ -1,0 +1,46 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+# export DH_VERBOSE=1
+FILENAME := libedgetpu.so.1.0
+SONAME := libedgetpu.so.1
+LIB_DEV := debian/libedgetpu-dev/usr/lib/$(DEB_HOST_GNU_TYPE)
+LIB_STD := debian/libedgetpu1-std/usr/lib/$(DEB_HOST_GNU_TYPE)
+LIB_MAX := debian/libedgetpu1-max/usr/lib/$(DEB_HOST_GNU_TYPE)
+
+ifeq ($(DEB_TARGET_ARCH),armhf)
+  CPU := armv7a
+else ifeq ($(DEB_TARGET_ARCH),arm64)
+  CPU := aarch64
+else ifeq ($(DEB_TARGET_ARCH),amd64)
+  CPU := k8
+endif
+
+%:
+	dh $@
+
+override_dh_auto_install:
+	dh_auto_install
+
+	mkdir -p $(LIB_DEV)
+	ln -fs $(FILENAME) $(LIB_DEV)/libedgetpu.so
+
+	mkdir -p $(LIB_STD)
+	cp -f throttled/$(CPU)/$(FILENAME) $(LIB_STD)/$(FILENAME)
+	ln -fs $(FILENAME) $(LIB_STD)/$(SONAME)
+
+	mkdir -p $(LIB_MAX)
+	cp -f direct/$(CPU)/$(FILENAME) $(LIB_MAX)/$(FILENAME)
+	ln -fs $(FILENAME) $(LIB_MAX)/$(SONAME)
+
+# Skip auto build and auto clean.
+override_dh_auto_clean:
+override_dh_auto_build:
+
+# Skip .so post processing.
+override_dh_strip:
+override_dh_shlibdeps:
+
+# Skip tests.
+override_dh_auto_test:

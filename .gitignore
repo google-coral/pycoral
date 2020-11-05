@@ -1,0 +1,12 @@
+/bazel-*
+/build/
+/dist/
+/pycoral/pybind/
+/tflite_runtime/
+__pycache__
+*.egg-info
+*.tar.gz
+.DS_Store
+*.deb
+*.buildinfo
+*.changes

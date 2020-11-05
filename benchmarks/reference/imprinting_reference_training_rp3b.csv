@@ -1,0 +1,2 @@
+MODEL DATA_SET TRAINING_TIME
+mobilenet_v1_1.0_224_l2norm_quant_edgetpu.tflite random 2870
