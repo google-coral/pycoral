@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Demo to show running two models on one/two Edge TPU devices.
+r"""Demo to show running two models on one/two Edge TPU devices.
 
 This is a dummy example that compares running two different models using one
 Edge TPU vs two Edge TPUs. It requires that your system includes two Edge TPU
@@ -22,6 +22,17 @@ You give the script one classification model and one
 detection model, and it runs each model the number of times specified with the
 `num_inferences` argument, using the same image. It then reports the time
 spent using either one or two Edge TPU devices.
+
+For example:
+```
+bash examples/install_requirements.sh two_models_inference.py
+
+python3 examples/two_models_inference.py \
+  --classification_model test_data/mobilenet_v2_1.0_224_quant_edgetpu.tflite  \
+  --detection_model \
+    test_data/ssd_mobilenet_v2_face_quant_postprocess_edgetpu.tflite \
+  --image test_data/parrot.jpg
+```
 
 Note: Running two models alternatively with one Edge TPU is cache unfriendly,
 as each model continuously kicks the other model off the device's cache when

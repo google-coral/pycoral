@@ -17,11 +17,15 @@ r"""An example of semantic segmentation.
 The following command runs this script and saves a new image showing the
 segmented pixels at the location specified by `output`:
 
+```
+bash examples/install_requirements.sh semantic_segmentation.py
+
 python3 examples/semantic_segmentation.py \
   --model test_data/deeplabv3_mnv2_pascal_quant_edgetpu.tflite \
   --input test_data/bird.bmp \
   --keep_aspect_ratio \
   --output ${HOME}/segmentation_result.jpg
+```
 """
 
 import argparse
@@ -126,7 +130,7 @@ def main():
   output_img.paste(resized_img, (0, 0))
   output_img.paste(mask_img, (width, 0))
   output_img.save(args.output)
-  print('Please check ', args.output)
+  print('Done. Results saved at', args.output)
 
 if __name__ == '__main__':
   main()

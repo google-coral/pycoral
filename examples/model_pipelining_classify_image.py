@@ -18,10 +18,13 @@ To run this code, you must attach two Edge TPUs attached to the host and
 install the Edge TPU runtime (`libedgetpu.so`) and `tflite_runtime`. For
 device setup instructions, see g.co/coral/setup.
 
-Example usage (use `install_requirements.sh` to get these files):
+Example usage:
 ```
-python3 model_pipelining_classify_image.py \
-  --models test_data/inception_v3_299_quant_segment_%d_of_2_edgetpu.tflite \
+bash examples/install_requirements.sh model_pipelining_classify_image.py
+
+python3 examples/model_pipelining_classify_image.py \
+  --models \
+    test_data/pipeline/inception_v3_299_quant_segment_%d_of_2_edgetpu.tflite \
   --labels test_data/imagenet_labels.txt \
   --input test_data/parrot.jpg
 ```

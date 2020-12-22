@@ -25,19 +25,24 @@ Here are the steps:
   This downloads 10 categories, 20 images for each category, saving it into
   a directory named `open_image_v4_subset`.
 
-2) Start training the new classification model:
+2) Get model files:
+   ```
+   bash examples/install_requirements.sh imprinting_learning.py
+   ```
+
+3) Start training the new classification model:
     ```
-    python3 imprinting_learning.py \
+    python3 examples/imprinting_learning.py \
       --model_path test_data/mobilenet_v1_1.0_224_l2norm_quant_edgetpu.tflite \
       --data open_image_v4_subset \
       --output ${HOME}/my_model.tflite
     ```
 
-3) Run an inference with the new model:
+4) Run an inference with the new model:
     ```
-    python3 classify_image.py \
-      --model my_model.tflite \
-      --label my_model.txt \
+    python3 examples/classify_image.py \
+      --model ${HOME}/my_model.tflite \
+      --label ${HOME}/my_model.txt \
       --input test_data/cat.bmp
     ```
 

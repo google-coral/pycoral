@@ -18,7 +18,9 @@ The following command runs this example for object detection using a
 MobileNet model trained with the COCO dataset (it can detect 90 types
 of objects):
 ```
-python3 small_object_detection.py \
+bash examples/install_requirements.sh small_object_detection.py
+
+python3 examples/small_object_detection.py \
   --model test_data/ssd_mobilenet_v2_coco_quant_no_nms_edgetpu.tflite \
   --label test_data/coco_labels.txt \
   --input test_data/kite_and_cold.jpg \
@@ -236,6 +238,7 @@ def main():
   img.show()
   if args.output:
     img.save(args.output)
+    print('Done. Results saved at', args.output)
 
 
 if __name__ == '__main__':

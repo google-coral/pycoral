@@ -24,9 +24,11 @@ Here are the steps:
 2) curl http://download.tensorflow.org/example_images/flower_photos.tgz \
      | tar xz -C /tmp/retrain
 
-3) Start training:
+3) bash examples/install_requirements.sh backprop_last_layer.py
 
-    python3 backprop_last_layer.py \
+4) Start training:
+
+    python3 examples/backprop_last_layer.py \
       --data_dir /tmp/retrain/flower_photos \
       --embedding_extractor_path \
       test_data/mobilenet_v1_1.0_224_quant_embedding_extractor_edgetpu.tflite
@@ -34,9 +36,9 @@ Here are the steps:
    Weights for retrained last layer will be saved to /tmp/retrain/output by
    default.
 
-4) Run an inference with the new model:
+5) Run an inference with the new model:
 
-    python3 classify_image.py \
+    python3 examples/classify_image.py \
       --model /tmp/retrain/output/retrained_model_edgetpu.tflite \
       --label /tmp/retrain/output/label_map.txt
       --input test_data/sunflower.bmp

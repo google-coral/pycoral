@@ -20,8 +20,10 @@ device setup instructions, see coral.ai/docs/setup.
 
 Example usage:
 ```
-python3 detect_image.py \
-  --model test_data/mobilenet_ssd_v2_coco_quant_postprocess_edgetpu.tflite \
+bash examples/install_requirements.sh detect_image.py
+
+python3 examples/detect_image.py \
+  --model test_data/ssd_mobilenet_v2_coco_quant_postprocess_edgetpu.tflite \
   --labels test_data/coco_labels.txt \
   --input test_data/grace_hopper.bmp \
   --output ${HOME}/grace_hopper_processed.bmp
