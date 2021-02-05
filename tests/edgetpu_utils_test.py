@@ -116,7 +116,6 @@ class TestEdgeTpuUtils(unittest.TestCase):
     edgetpu.run_inference(interpreter, np_input)
     ret = interpreter.tensor(output_index)()
     ret0 = np.copy(ret)
-    self.assertTrue(np.array_equal(ret0, ret))
     # bytes
     bytes_input = bytes(input_data)
     edgetpu.run_inference(interpreter, bytes_input)
@@ -131,9 +130,18 @@ class TestEdgeTpuUtils(unittest.TestCase):
     if _libgst:
       gst_input = Gst.Buffer.new_wrapped(bytes_input)
       edgetpu.run_inference(interpreter, gst_input)
+      ret = interpreter.tensor(output_index)()
       self.assertTrue(np.array_equal(ret0, ret))
     else:
       print('Can not import gi. Skip test on Gst.Buffer input type.')
+
+  def _run_inference_with_gst(self, interpreter, input_data):
+    output_index = interpreter.get_output_details()[0]['index']
+    bytes_input = bytes(input_data)
+    gst_input = Gst.Buffer.new_wrapped(bytes_input)
+    edgetpu.run_inference(interpreter, gst_input)
+    ret = interpreter.tensor(output_index)()
+    return np.copy(ret)
 
   def test_run_inference_with_different_types(self):
     interpreter = edgetpu.make_interpreter(self._default_test_model_path())
@@ -147,9 +155,20 @@ class TestEdgeTpuUtils(unittest.TestCase):
     interpreter.allocate_tensors()
     input_size = required_input_array_size(interpreter)
     input_data = test_utils.generate_random_input(1, input_size + 1)
-    with self.assertRaisesRegex(ValueError,
-                                'input size=150529, expected=150528'):
-      self._run_inference_with_different_input_types(interpreter, input_data)
+    self._run_inference_with_different_input_types(interpreter, input_data)
+
+  def test_compare_expected_and_larger_input_size(self):
+    if _libgst:
+      interpreter = edgetpu.make_interpreter(self._default_test_model_path())
+      interpreter.allocate_tensors()
+      input_size = required_input_array_size(interpreter)
+      larger_input_data = test_utils.generate_random_input(1, input_size + 1)
+      larger_ret = self._run_inference_with_gst(interpreter, larger_input_data)
+      ret = self._run_inference_with_gst(interpreter,
+                                         larger_input_data[:input_size])
+      self.assertTrue(np.array_equal(ret, larger_ret))
+    else:
+      print('Can not import gi. Skip test on Gst.Buffer input type.')
 
   def test_run_inference_smaller_input_size(self):
     interpreter = edgetpu.make_interpreter(self._default_test_model_path())

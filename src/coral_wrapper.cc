@@ -207,56 +207,105 @@ PYBIND11_MODULE(_pywrap_coral, m) {
   // Different with import_array() import_array1() has return value.
   // https://docs.scipy.org/doc/numpy-1.14.2/reference/c-api.array.html
   import_array1();
+  py::options options;
+  options.disable_function_signatures();
 
-  m.def("InvokeWithMemBuffer",
-        [](py::object interpreter_handle, intptr_t buffer, size_t size) {
-          auto* interpreter = reinterpret_cast<tflite::Interpreter*>(
-              interpreter_handle.cast<intptr_t>());
-          auto status = coral::InvokeWithMemBuffer(
-              interpreter, reinterpret_cast<void*>(buffer), size,
-              static_cast<tflite::StatefulErrorReporter*>(
-                  interpreter->error_reporter()));
-          if (!status.ok())
-            throw std::runtime_error(std::string(status.message()));
-        });
+  m.def(
+      "InvokeWithMemBuffer",
+      [](py::object interpreter_handle, uintptr_t buffer, size_t size) {
+        auto* interpreter = reinterpret_cast<tflite::Interpreter*>(
+            interpreter_handle.cast<intptr_t>());
+        py::gil_scoped_release release;
+        auto status = coral::InvokeWithMemBuffer(
+            interpreter, reinterpret_cast<void*>(buffer), size,
+            static_cast<tflite::StatefulErrorReporter*>(
+                interpreter->error_reporter()));
+        if (!status.ok())
+          throw std::runtime_error(std::string(status.message()));
+      },
+      R"pbdoc(
+        Invoke the given ``tflite.Interpreter`` with a pointer to a native
+        memory allocation.
 
-  m.def("InvokeWithBytes",
-        [](py::object interpreter_handle, py::bytes input_data) {
-          auto* interpreter = reinterpret_cast<tflite::Interpreter*>(
-              interpreter_handle.cast<intptr_t>());
-          char* buffer;
-          ssize_t length;
-          PyBytes_AsStringAndSize(input_data.ptr(), &buffer, &length);
-          auto status = coral::InvokeWithMemBuffer(
-              interpreter, buffer, static_cast<size_t>(length),
-              static_cast<tflite::StatefulErrorReporter*>(
-                  interpreter->error_reporter()));
-          if (!status.ok())
-            throw std::runtime_error(std::string(status.message()));
-        });
+        Works only for Edge TPU models running on PCIe TPU devices.
 
-  m.def("InvokeWithDmaBuffer",
-        [](py::object interpreter_handle, int dma_fd, size_t size) {
-          auto* interpreter = reinterpret_cast<tflite::Interpreter*>(
-              interpreter_handle.cast<intptr_t>());
-          auto status = coral::InvokeWithDmaBuffer(
-              interpreter, dma_fd, size,
-              static_cast<tflite::StatefulErrorReporter*>(
-                  interpreter->error_reporter()));
-          if (!status.ok())
-            throw std::runtime_error(std::string(status.message()));
-        });
+        Args:
+          interpreter: The ``tflite:Interpreter`` to invoke.
+          buffer (intptr_t): Pointer to memory buffer with input data.
+          size (size_t): The buffer size.
+      )pbdoc");
 
-  m.def("SupportsDmabuf", [](py::object interpreter_handle) {
-    auto* interpreter = reinterpret_cast<tflite::Interpreter*>(
-        interpreter_handle.cast<intptr_t>());
-    auto* context = interpreter->primary_subgraph().context();
-    auto* edgetpu_context = static_cast<edgetpu::EdgeTpuContext*>(
-        context->GetExternalContext(context, kTfLiteEdgeTpuContext));
-    if (!edgetpu_context) return false;
-    auto device = edgetpu_context->GetDeviceEnumRecord();
-    return device.type == edgetpu::DeviceType::kApexPci;
-  });
+  m.def(
+      "InvokeWithBytes",
+      [](py::object interpreter_handle, py::bytes input_data) {
+        auto* interpreter = reinterpret_cast<tflite::Interpreter*>(
+            interpreter_handle.cast<intptr_t>());
+        char* buffer;
+        ssize_t length;
+        PyBytes_AsStringAndSize(input_data.ptr(), &buffer, &length);
+        py::gil_scoped_release release;
+        auto status = coral::InvokeWithMemBuffer(
+            interpreter, buffer, static_cast<size_t>(length),
+            static_cast<tflite::StatefulErrorReporter*>(
+                interpreter->error_reporter()));
+        if (!status.ok())
+          throw std::runtime_error(std::string(status.message()));
+      },
+      R"pbdoc(
+        Invoke the given ``tflite.Interpreter`` with bytes as input.
+
+        Args:
+          interpreter: The ``tflite:Interpreter`` to invoke.
+          input_data (bytes): Raw bytes as input data.
+      )pbdoc");
+
+  m.def(
+      "InvokeWithDmaBuffer",
+      [](py::object interpreter_handle, int dma_fd, size_t size) {
+        auto* interpreter = reinterpret_cast<tflite::Interpreter*>(
+            interpreter_handle.cast<intptr_t>());
+        py::gil_scoped_release release;
+        auto status = coral::InvokeWithDmaBuffer(
+            interpreter, dma_fd, size,
+            static_cast<tflite::StatefulErrorReporter*>(
+                interpreter->error_reporter()));
+        if (!status.ok())
+          throw std::runtime_error(std::string(status.message()));
+      },
+      R"pbdoc(
+        Invoke the given ``tflite.Interpreter`` using a given Linux dma-buf
+        file descriptor as an input tensor.
+
+        Works only for Edge TPU models running on PCIe-based Coral devices.
+        You can verify device support with ``supports_dmabuf()``.
+
+        Args:
+          interpreter: The ``tflite:Interpreter`` to invoke.
+          dma_fd (int): DMA file descriptor.
+          size (size_t): DMA buffer size.
+      )pbdoc");
+
+  m.def(
+      "SupportsDmabuf",
+      [](py::object interpreter_handle) {
+        auto* interpreter = reinterpret_cast<tflite::Interpreter*>(
+            interpreter_handle.cast<intptr_t>());
+        auto* context = interpreter->primary_subgraph().context();
+        auto* edgetpu_context = static_cast<edgetpu::EdgeTpuContext*>(
+            context->GetExternalContext(context, kTfLiteEdgeTpuContext));
+        if (!edgetpu_context) return false;
+        auto device = edgetpu_context->GetDeviceEnumRecord();
+        return device.type == edgetpu::DeviceType::kApexPci;
+      },
+      R"pbdoc(
+        Checks whether the device supports Linux dma-buf.
+
+        Args:
+          interpreter: The ``tflite:Interpreter`` that's bound to the
+            Edge TPU you want to query.
+        Returns:
+          True if the device supports DMA buffers.
+      )pbdoc");
 
   m.def("GetRuntimeVersion", &GetRuntimeVersion,
         R"pbdoc(

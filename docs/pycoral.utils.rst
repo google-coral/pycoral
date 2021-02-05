@@ -17,3 +17,4 @@ pycoral.utils.edgetpu
     :members:
     :undoc-members:
     :inherited-members:
+    :imported-members:

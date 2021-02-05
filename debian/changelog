@@ -1,3 +1,9 @@
+coral (1.0.1) stable; urgency=medium
+
+  * pycoral initial release update
+
+ -- Coral <coral-support@google.com>  Thu, 04 Feb 2021 14:37:49 -0800
+
 coral (1.0) stable; urgency=medium
 
   * pycoral initial release

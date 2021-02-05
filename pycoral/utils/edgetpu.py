@@ -136,7 +136,7 @@ def _gst_buffer_map(buffer):
 
 
 def _check_input_size(input_size, expected_input_size):
-  if input_size != expected_input_size:
+  if input_size < expected_input_size:
     raise ValueError('input size={}, expected={}.'.format(
         input_size, expected_input_size))
 
