@@ -61,7 +61,7 @@ def get_scores(interpreter):
     # Always convert to np.int64 to avoid overflow on subtraction.
     return scale * (output_data.astype(np.int64) - zero_point)
 
-  return output_data
+  return output_data.copy()
 
 
 def get_classes_from_scores(scores,

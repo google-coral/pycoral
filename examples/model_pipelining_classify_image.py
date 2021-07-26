@@ -99,16 +99,24 @@ def main():
             'inception_v3_299_quant_segment_%d_of_2_edgetpu.tflite'))
   parser.add_argument(
       '-i', '--input', required=True, help='Image to be classified.')
+  parser.add_argument('-l', '--labels', help='File path of labels file.')
   parser.add_argument(
-      '-l', '--labels', help='File path of labels file.')
-  parser.add_argument(
-      '-k', '--top_k', type=int, default=1,
+      '-k',
+      '--top_k',
+      type=int,
+      default=1,
       help='Max number of classification results')
   parser.add_argument(
-      '-t', '--threshold', type=float, default=0.0,
+      '-t',
+      '--threshold',
+      type=float,
+      default=0.0,
       help='Classification score threshold')
   parser.add_argument(
-      '-c', '--count', type=int, default=5,
+      '-c',
+      '--count',
+      type=int,
+      default=5,
       help='Number of times to run inference')
   args = parser.parse_args()
   labels = read_label_file(args.labels) if args.labels else {}
@@ -124,13 +132,14 @@ def main():
   runner = _make_runner(model_paths, devices)
 
   size = common.input_size(runner.interpreters()[0])
+  name = common.input_details(runner.interpreters()[0], 'name')
   image = np.array(
       Image.open(args.input).convert('RGB').resize(size, Image.ANTIALIAS))
 
   def producer():
     for _ in range(args.count):
-      runner.push([image])
-    runner.push([])
+      runner.push({name: image})
+    runner.push({})
 
   def consumer():
     output_details = runner.interpreters()[-1].get_output_details()[0]
@@ -139,7 +148,8 @@ def main():
       result = runner.pop()
       if not result:
         break
-      scores = scale * (result[0][0].astype(np.int64) - zero_point)
+      values, = result.values()
+      scores = scale * (values[0].astype(np.int64) - zero_point)
       classes = classify.get_classes_from_scores(scores, args.top_k,
                                                  args.threshold)
     print('-------RESULTS--------')

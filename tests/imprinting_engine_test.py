@@ -18,8 +18,8 @@ from PIL import Image
 
 from pycoral.adapters import classify
 from pycoral.adapters import common
-from pycoral.learn.imprinting.engine import ImprintingEngine
-from pycoral.utils.edgetpu import make_interpreter
+from pycoral.learn.imprinting import engine
+from pycoral.utils import edgetpu
 from tests import test_utils
 import unittest
 
@@ -39,13 +39,18 @@ def set_input(interpreter, image):
 
 class TestImprintingEnginePythonAPI(unittest.TestCase):
 
+  @classmethod
+  def setUpClass(cls):
+    super(TestImprintingEnginePythonAPI, cls).setUpClass()
+    cls.delegate = edgetpu.load_edgetpu_delegate()
+
   def _train_and_test(self, model_path, train_points, test_points,
                       keep_classes):
     # Train.
-    engine = ImprintingEngine(model_path, keep_classes)
+    imprinting_engine = engine.ImprintingEngine(model_path, keep_classes)
 
-    extractor = make_interpreter(
-        engine.serialize_extractor_model(), device=':0')
+    extractor = edgetpu.make_interpreter(
+        imprinting_engine.serialize_extractor_model(), delegate=self.delegate)
     extractor.allocate_tensors()
 
     for point in train_points:
@@ -54,12 +59,12 @@ class TestImprintingEnginePythonAPI(unittest.TestCase):
           set_input(extractor, img)
           extractor.invoke()
           embedding = classify.get_scores(extractor)
-          self.assertEqual(len(embedding), engine.embedding_dim)
-          engine.train(embedding, point.class_id)
+          self.assertEqual(len(embedding), imprinting_engine.embedding_dim)
+          imprinting_engine.train(embedding, point.class_id)
 
     # Test.
-    trained_model = engine.serialize_model()
-    classifier = make_interpreter(trained_model, device=':0')
+    trained_model = imprinting_engine.serialize_model()
+    classifier = edgetpu.make_interpreter(trained_model, delegate=self.delegate)
     classifier.allocate_tensors()
 
     self.assertEqual(len(classifier.get_output_details()), 1)
@@ -152,21 +157,21 @@ class TestImprintingEnginePythonAPI(unittest.TestCase):
         'mobilenet_v1_1.0_224_l2norm_quant_edgetpu.tflite'
     ]
     for model in model_list:
-      engine = ImprintingEngine(
+      imprinting_engine = engine.ImprintingEngine(
           test_utils.test_data_path(model), keep_classes=False)
       with self.assertRaisesRegex(RuntimeError, 'Model is not trained.'):
-        engine.serialize_model()
+        imprinting_engine.serialize_model()
 
   def test_imprinting_engine_invalid_model_path(self):
     with self.assertRaisesRegex(
         ValueError, 'Failed to open file: invalid_model_path.tflite'):
-      ImprintingEngine('invalid_model_path.tflite')
+      engine.ImprintingEngine('invalid_model_path.tflite')
 
   def test_imprinting_engine_load_extractor_with_wrong_format(self):
     expected_message = ('Unsupported model architecture. Input model must have '
                         'an L2Norm layer.')
     with self.assertRaisesRegex(ValueError, expected_message):
-      ImprintingEngine(
+      engine.ImprintingEngine(
           test_utils.test_data_path('mobilenet_v1_1.0_224_quant.tflite'))
 
 

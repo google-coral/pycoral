@@ -57,10 +57,11 @@ def machine_info():
       machine = 'rp3b'
     elif 'Raspberry Pi 3 Model B Plus Rev' in board_info:
       machine = 'rp3b+'
-    elif 'Raspberry Pi 4 Model B Rev 1.1' in board_info:
+    elif 'Raspberry Pi 4 Model B Rev' in board_info:
       machine = 'rp4b'
     else:
       machine = 'unknown'
+      print('[WARMING] unknown board: ', board_info)
   return machine
 
 

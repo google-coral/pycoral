@@ -30,11 +30,13 @@ class ImprintingEngine:
     """Performs weight imprinting (transfer learning) with the given model.
 
     Args:
-      model_path (str): Path to the model you want to retrain. This model must
-        be a ``.tflite`` file output by the ``join_tflite_models`` tool. For
-        more information about how to create a compatible model, read `Retrain
-        an image classification model on-device
-        <https://coral.ai/docs/edgetpu/retrain-classification-ondevice/>`_.
+      model_path (str): Path to the ``.tflite`` model you want to retrain.
+        This must be a model that's specially-designed for this API. You
+        can use our `weight imprinting model
+        <https://coral.ai/models/image-classification/#training-models>`_ that
+        has a pre-trained base model, or you can train the base model yourself
+        by following our guide to `Retrain the base MobileNet model
+        <https://coral.ai/docs/edgetpu/retrain-classification-ondevice/#retrain-the-base-mobilenet-model>`_.
       keep_classes (bool): If True, keep the existing classes from the
         pre-trained model (and use training to add additional classes). If
         False, drop the existing classes and train the model to include new

@@ -20,8 +20,8 @@ from PIL import Image
 
 from pycoral.adapters import classify
 from pycoral.adapters import common
-from pycoral.learn.imprinting.engine import ImprintingEngine
-from pycoral.utils.edgetpu import make_interpreter
+from pycoral.learn.imprinting import engine
+from pycoral.utils import edgetpu
 from tests import test_utils
 import unittest
 
@@ -34,6 +34,11 @@ def test_image(path):
 
 
 class ImprintingEngineEvaluationTest(unittest.TestCase):
+
+  @classmethod
+  def setUpClass(cls):
+    super(ImprintingEngineEvaluationTest, cls).setUpClass()
+    cls.delegate = edgetpu.load_edgetpu_delegate()
 
   def _transfer_learn_and_evaluate(self, model_path, keep_classes, dataset_path,
                                    test_ratio, top_k_range):
@@ -51,12 +56,13 @@ class ImprintingEngineEvaluationTest(unittest.TestCase):
     Returns:
       list of float numbers.
     """
-    engine = ImprintingEngine(model_path, keep_classes)
+    imprinting_engine = engine.ImprintingEngine(model_path, keep_classes)
 
-    extractor = make_interpreter(engine.serialize_extractor_model())
+    extractor = edgetpu.make_interpreter(
+        imprinting_engine.serialize_extractor_model(), delegate=self.delegate)
     extractor.allocate_tensors()
 
-    num_classes = engine.num_classes
+    num_classes = imprinting_engine.num_classes
 
     print('---------------      Parsing dataset      ----------------')
     print('Dataset path:', dataset_path)
@@ -85,16 +91,17 @@ class ImprintingEngineEvaluationTest(unittest.TestCase):
         with test_image(image) as img:
           common.set_input(extractor, img.resize(size, Image.NEAREST))
           extractor.invoke()
-          engine.train(classify.get_scores(extractor),
-                       class_id=num_classes + class_id)
+          imprinting_engine.train(
+              classify.get_scores(extractor), class_id=num_classes + class_id)
 
     print('----------------     Training finished   -----------------')
     with test_utils.temporary_file(suffix='.tflite') as output_model_path:
-      output_model_path.write(engine.serialize_model())
+      output_model_path.write(imprinting_engine.serialize_model())
 
       # Evaluate
       print('----------------     Start evaluating    -----------------')
-      classifier = make_interpreter(output_model_path.name)
+      classifier = edgetpu.make_interpreter(
+          output_model_path.name, delegate=self.delegate)
       classifier.allocate_tensors()
 
       # top[i] represents number of top (i+1) correct inference.

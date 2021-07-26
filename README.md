@@ -1,11 +1,16 @@
 # PyCoral API
 
-This repository contains an easy-to-use Python API to run inferences and
-perform on-device transfer learning with TensorFlow Lite models on
+This repository contains an easy-to-use Python API that helps you run inferences
+and perform on-device transfer learning with TensorFlow Lite models on
 [Coral devices](https://coral.ai/products/).
 
-You can install this library with the Python wheels listed at
+To install the prebuilt PyCoral library, see the instructions at
 [coral.ai/software/](https://coral.ai/software/#pycoral-api).
+
+**Note:** If you're on a Debian system, be sure to install this library from
+apt-get and not from pip. Using `pip install` is not guaranteed compatible with
+the other Coral libraries that you must install from apt-get. For details, see
+[coral.ai/software/](https://coral.ai/software/#debian-packages).
 
 ## Documentation and examples
 
@@ -20,7 +25,17 @@ https://github.com/google-coral/pycoral/tree/master/examples#pycoral-api-example
 
 ## Compilation
 
-To build the library yourself, follow these steps:
+When building this library yourself, it's critical that you have
+version-matching builds of
+[libcoral](https://github.com/google-coral/libcoral/tree/master) and
+[libedgetpu](https://github.com/google-coral/libedgetpu/tree/master)—notice
+these are submodules of the pycoral repo, and they all share the same
+`TENSORFLOW_COMMIT` value. So just be sure if you change one, you must change
+them all.
+
+For complete details about how to build all these libraries, read
+[Build Coral for your platform](https://coral.ai/docs/notes/build-coral/).
+Or to build just this library, follow these steps:
 
 1.  Clone this repo and include submodules:
 

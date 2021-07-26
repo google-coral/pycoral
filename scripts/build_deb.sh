@@ -17,7 +17,7 @@ set -ex
 
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly MAKEFILE="${SCRIPT_DIR}/../Makefile"
-readonly CMD="make deb tflite-deb && make -C libedgetpu_bin deb"
+readonly CMD="make deb tflite-deb && LIBEDGETPU_BIN=../pycoral/libedgetpu_bin DIST_DIR=../pycoral/dist make -C ../libedgetpu deb"
 
 "${SCRIPT_DIR}/build.sh"
 make DOCKER_SHELL_COMMAND="${CMD}" -f "${MAKEFILE}" docker-shell

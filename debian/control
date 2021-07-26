@@ -8,7 +8,7 @@ Homepage: https://coral.ai/
 
 Package: pycoral-examples
 Architecture: all
-Depends: python3-coral (= ${binary:Version}),
+Depends: python3-pycoral (= ${binary:Version}),
          ${misc:Depends}
 Description: Example code for Coral Python API
  Python examples to demonstrate how to use the Coral Python API
@@ -16,12 +16,12 @@ Description: Example code for Coral Python API
 Package: python3-pycoral
 Architecture: any
 Depends: libc6,
-         libedgetpu1-std (= 15.0) | libedgetpu1 (= 15.0),
+         libedgetpu1-std (= 16.0) | libedgetpu1 (= 16.0),
          libgcc1,
          libstdc++6,
          python3-numpy,
          python3-pil,
-         python3-tflite-runtime (= 2.5.0),
+         python3-tflite-runtime (= 2.5.0.post1),
          ${misc:Depends},
          ${python3:Depends}
 Description: Coral Python API

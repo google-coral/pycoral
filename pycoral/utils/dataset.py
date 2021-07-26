@@ -41,5 +41,5 @@ def read_label_file(file_path):
     if len(pair) == 2 and pair[0].strip().isdigit():
       ret[int(pair[0])] = pair[1].strip()
     else:
-      ret[row_number] = pair[0].strip()
+      ret[row_number] = content.strip()
   return ret

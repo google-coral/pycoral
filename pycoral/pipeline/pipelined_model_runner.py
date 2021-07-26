@@ -68,17 +68,19 @@ class PipelinedModelRunner:
     self._interpreters = interpreters
     self._runner = _pywrap_coral.PipelinedModelRunnerWrapper(
         [i._native_handle() for i in interpreters])
-    self._input_types = [
-        d['dtype'] for d in self._interpreters[0].get_input_details()
-    ]
-    self._output_shapes = [
-        d['shape'] for d in self._interpreters[-1].get_output_details()
-    ]
+
+    self._input_types = {}
+    for d in self._interpreters[0].get_input_details():
+      self._input_types[d['name']] = d['dtype']
+
+    self._output_shapes = {}
+    for d in self._interpreters[-1].get_output_details():
+      self._output_shapes[d['name']] = d['shape']
 
   def __del__(self):
     if self._runner:
       # Push empty request to stop the pipeline in case user forgot.
-      self.push([])
+      self.push({})
       num_unconsumed = 0
       # Release any unconsumed tensors if any.
       while self.pop():
@@ -119,7 +121,7 @@ class PipelinedModelRunner:
   def push(self, input_tensors):
     """Pushes input tensors to trigger inference.
 
-    Pushing an empty list is allowed, which signals the class that no more
+    Pushing an empty dict is allowed, which signals the class that no more
     inputs will be added (the function will return false if inputs were pushed
     after this special push). This special push allows the ``pop()`` consumer to
     properly drain unconsumed output tensors.
@@ -129,23 +131,25 @@ class PipelinedModelRunner:
     size threshold is unlimited, in this case, call to push() is non-blocking.
 
     Args:
-      input_tensors: A list of :obj:`numpy.array` as the input for the given
-        model, in the appropriate order.
+      input_tensors: A dictionary with key of type string, and value of type
+        :obj:`numpy.array` representing the model's input tensors, where keys
+        are the tensor names.
 
-    Returns:
-      True if push is successful; False otherwise.
+    Raises:
+      RuntimeError: error during pushing pipelined model inference request.
     """
     if input_tensors and len(input_tensors) != len(self._input_types):
       raise ValueError('Expected input of length {}, but got {}'.format(
           len(self._input_types), len(input_tensors)))
 
-    for tensor, input_type in zip(input_tensors, self._input_types):
+    for key, tensor in input_tensors.items():
+      input_type = self._input_types[key]
       if not isinstance(tensor, np.ndarray) or tensor.dtype != input_type:
         raise ValueError(
             'Input should be a list of numpy array of type {}'.format(
                 input_type))
 
-    return self._runner.Push(input_tensors)
+    self._runner.Push(input_tensors)
 
   def pop(self):
     """Returns a single inference result.
@@ -153,13 +157,17 @@ class PipelinedModelRunner:
     This function blocks the calling thread until a result is returned.
 
     Returns:
-      List of :obj:`numpy.array` objects representing the model's output
-      tensor. Returns None when a ``push()`` receives an empty list, indicating
+      Dictionary with key of type string, and value of type :obj:`numpy.array`
+      representing the model's output tensors, where keys are the tensor names.
+      Returns None when a ``push()`` receives an empty dict input, indicating
       there are no more output tensors available.
+
+    Raises:
+      RuntimeError: error during retrieving pipelined model inference results.
     """
     result = self._runner.Pop()
     if result:
-      result = [r.reshape(s) for r, s in zip(result, self._output_shapes)]
+      result = {k: v.reshape(self._output_shapes[k]) for k, v in result.items()}
     return result
 
   def interpreters(self):

@@ -29,6 +29,16 @@ import unittest
 _TEST_DATA_DIR = ''
 
 
+def get_test_tmpdir():
+  """Returns default test temp dir."""
+  tmpdir = os.environ.get('TMPDIR', '')
+  if not tmpdir:
+    tmpdir = os.path.join(tempfile.gettempdir(), 'coral')
+  if not os.path.exists(tmpdir):
+    os.mkdir(tmpdir)
+  return tmpdir
+
+
 def test_data_path(path, *paths):
   """Returns absolute path for a given test file."""
   return os.path.abspath(os.path.join(_TEST_DATA_DIR, path, *paths))
@@ -153,6 +163,7 @@ def coral_test_main():
     test_data is under edgetpu/test_data.
   """
 
+  print('Python version: ', sys.version)
   global _TEST_DATA_DIR
   test_data_dir_default = os.path.join(
       os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'test_data')

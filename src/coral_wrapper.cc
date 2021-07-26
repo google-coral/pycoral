@@ -1,3 +1,18 @@
+/* Copyright 2019-2021 Google LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+==============================================================================*/
+
 // Copyright 2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -224,13 +239,13 @@ PYBIND11_MODULE(_pywrap_coral, m) {
           throw std::runtime_error(std::string(status.message()));
       },
       R"pbdoc(
-        Invoke the given ``tflite.Interpreter`` with a pointer to a native
+        Invoke the given ``tf.lite.Interpreter`` with a pointer to a native
         memory allocation.
 
         Works only for Edge TPU models running on PCIe TPU devices.
 
         Args:
-          interpreter: The ``tflite:Interpreter`` to invoke.
+          interpreter: The ``tf.lite:Interpreter`` to invoke.
           buffer (intptr_t): Pointer to memory buffer with input data.
           size (size_t): The buffer size.
       )pbdoc");
@@ -252,10 +267,10 @@ PYBIND11_MODULE(_pywrap_coral, m) {
           throw std::runtime_error(std::string(status.message()));
       },
       R"pbdoc(
-        Invoke the given ``tflite.Interpreter`` with bytes as input.
+        Invoke the given ``tf.lite.Interpreter`` with bytes as input.
 
         Args:
-          interpreter: The ``tflite:Interpreter`` to invoke.
+          interpreter: The ``tf.lite:Interpreter`` to invoke.
           input_data (bytes): Raw bytes as input data.
       )pbdoc");
 
@@ -273,14 +288,14 @@ PYBIND11_MODULE(_pywrap_coral, m) {
           throw std::runtime_error(std::string(status.message()));
       },
       R"pbdoc(
-        Invoke the given ``tflite.Interpreter`` using a given Linux dma-buf
+        Invoke the given ``tf.lite.Interpreter`` using a given Linux dma-buf
         file descriptor as an input tensor.
 
         Works only for Edge TPU models running on PCIe-based Coral devices.
         You can verify device support with ``supports_dmabuf()``.
 
         Args:
-          interpreter: The ``tflite:Interpreter`` to invoke.
+          interpreter: The ``tf.lite:Interpreter`` to invoke.
           dma_fd (int): DMA file descriptor.
           size (size_t): DMA buffer size.
       )pbdoc");
@@ -301,7 +316,7 @@ PYBIND11_MODULE(_pywrap_coral, m) {
         Checks whether the device supports Linux dma-buf.
 
         Args:
-          interpreter: The ``tflite:Interpreter`` that's bound to the
+          interpreter: The ``tf.lite:Interpreter`` that's bound to the
             Edge TPU you want to query.
         Returns:
           True if the device supports DMA buffers.
@@ -335,7 +350,28 @@ PYBIND11_MODULE(_pywrap_coral, m) {
       Lists all available Edge TPU devices.
 
       Returns:
-        A list of dictionary, each representing a device record of type and path.
+        A list of dictionary items, each representing an Edge TPU in the system.
+        Each dictionary includes a "type" (either "usb" or "pci") and a
+        "path" (the device location in the system). Note: The order of the
+        Edge TPUs in this list are not guaranteed to be consistent across
+        system reboots.
+    )pbdoc");
+
+  m.def(
+      "SetVerbosity",
+      [](int verbosity) {
+        auto status =
+            edgetpu::EdgeTpuManager::GetSingleton()->SetVerbosity(verbosity);
+        return status == TfLiteStatus::kTfLiteOk;
+      },
+      R"pbdoc(
+      Sets the verbosity of operating logs related to each Edge TPU.
+      10 is the most verbose; 0 is the default.
+
+      Args:
+        verbosity(int): Desired verbosity 0-10.
+      Returns:
+        A boolean indicating if verbosity was succesfully set.
     )pbdoc");
 
   py::class_<coral::ImprintingEngine>(m, "ImprintingEnginePythonWrapper")
@@ -428,45 +464,56 @@ PYBIND11_MODULE(_pywrap_coral, m) {
       .def("SetOutputQueueSize",
            &coral::PipelinedModelRunner::SetOutputQueueSize)
       .def("Push",
-           [](coral::PipelinedModelRunner& self, py::list& list) -> bool {
-             std::vector<coral::PipelineTensor> input_tensors(list.size());
-             for (int i = 0; i < list.size(); ++i) {
-               const auto info = list[i].cast<py::buffer>().request();
+           [](coral::PipelinedModelRunner& self, py::dict& input_tensor_dict) {
+             std::vector<coral::PipelineTensor> input_tensors(
+                 input_tensor_dict.size());
+             int i = 0;
+             for (const auto& item : input_tensor_dict) {
+               input_tensors[i].name = item.first.cast<std::string>();
+               const auto info = item.second.cast<py::buffer>().request();
                input_tensors[i].type = NumpyDtypeToTfLiteType(info.format);
                input_tensors[i].bytes = info.size * info.itemsize;
                input_tensors[i].buffer = self.GetInputTensorAllocator()->Alloc(
                    input_tensors[i].bytes);
                std::memcpy(input_tensors[i].buffer->ptr(), info.ptr,
                            input_tensors[i].bytes);
+               ++i;
              }
              // Release GIL because Push can be blocking (if input queue size is
              // bigger than input queue size threshold).
              py::gil_scoped_release release;
-             auto push_status = self.Push(input_tensors);
+             const auto push_status = self.Push(input_tensors);
              py::gil_scoped_acquire acquire;
-             return push_status;
+             if (!push_status.ok()) {
+               throw std::runtime_error(std::string(push_status.message()));
+             }
            })
       .def("Pop", [](coral::PipelinedModelRunner& self) -> py::object {
         std::vector<coral::PipelineTensor> output_tensors;
 
         // Release GIL because Pop is blocking.
         py::gil_scoped_release release;
-        self.Pop(&output_tensors);
+        const auto pop_status = self.Pop(&output_tensors);
         py::gil_scoped_acquire acquire;
+
+        if (!pop_status.ok()) {
+          throw std::runtime_error(std::string(pop_status.message()));
+        }
 
         if (output_tensors.empty()) {
           return py::none();
         }
 
-        py::list result;
+        py::dict result;
         for (auto tensor : output_tensors) {
           // Underlying memory's ownership is passed to numpy object.
           py::capsule free_when_done(tensor.buffer->ptr(),
                                      [](void* ptr) { std::free(ptr); });
-          result.append(py::array(TfLiteTypeToNumpyDtype(tensor.type),
-                                  /*shape=*/{tensor.bytes},
-                                  /*strides=*/{1}, tensor.buffer->ptr(),
-                                  free_when_done));
+          result[PyUnicode_DecodeLatin1(tensor.name.data(), tensor.name.size(),
+                                        nullptr)] =
+              py::array(TfLiteTypeToNumpyDtype(tensor.type),
+                        /*shape=*/{tensor.bytes},
+                        /*strides=*/{1}, tensor.buffer->ptr(), free_when_done);
           self.GetOutputTensorAllocator()->Free(tensor.buffer);
         }
         return result;

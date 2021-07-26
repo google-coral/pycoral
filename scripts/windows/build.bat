@@ -1,3 +1,17 @@
+:: Copyright 2019-2021 Google LLC
+::
+:: Licensed under the Apache License, Version 2.0 (the "License");
+:: you may not use this file except in compliance with the License.
+:: You may obtain a copy of the License at
+::
+::     https://www.apache.org/licenses/LICENSE-2.0
+::
+:: Unless required by applicable law or agreed to in writing, software
+:: distributed under the License is distributed on an "AS IS" BASIS,
+:: WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+:: See the License for the specific language governing permissions and
+:: limitations under the License.
+
 echo off
 setlocal enabledelayedexpansion
 
@@ -8,15 +22,12 @@ if defined BAZEL_OUTPUT_BASE (
     set BAZEL_CMD=%BAZEL_CMD% --output_base=%BAZEL_OUTPUT_BASE%
 )
 
-set BAZEL_INFO_FLAGS=^
---experimental_repo_remote_exec
-
 set BAZEL_VS=C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools
 set BAZEL_VC=C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC
 call "%BAZEL_VC%\Auxiliary\Build\vcvars64.bat"
 
-for /f %%i in ('%BAZEL_CMD% info %BAZEL_INFO_FLAGS% output_base') do set "BAZEL_OUTPUT_BASE=%%i"
-for /f %%i in ('%BAZEL_CMD% info %BAZEL_INFO_FLAGS% output_path') do set "BAZEL_OUTPUT_PATH=%%i"
+for /f %%i in ('%BAZEL_CMD% info output_base') do set "BAZEL_OUTPUT_BASE=%%i"
+for /f %%i in ('%BAZEL_CMD% info output_path') do set "BAZEL_OUTPUT_PATH=%%i"
 for /f %%i in ('%PYTHON% -c "import sys;print(str(sys.version_info.major)+str(sys.version_info.minor))"') do set "PY3_VER=%%i"
 for /f %%i in ('%PYTHON% -c "import sys;print(sys.executable)"') do set "PYTHON_BIN_PATH=%%i"
 for /f %%i in ('%PYTHON% -c "import sys;print(sys.base_prefix)"') do set "PYTHON_LIB_PATH=%%i\Lib"
@@ -51,16 +62,13 @@ if defined ARG (
     goto PROCESSARGS
 )
 
-for /f "tokens=3" %%i in ('type %ROOTDIR%\WORKSPACE ^| findstr /C:"TENSORFLOW_COMMIT ="') do set "TENSORFLOW_COMMIT=%%i"
+for /f "tokens=1" %%i in ('bazel query "@libedgetpu_properties//..." ^| findstr /C:"tensorflow_commit" ^| cut -d# -f2') do set "TENSORFLOW_COMMIT=%%i"
 set BAZEL_BUILD_FLAGS= ^
 --compilation_mode=%COMPILATION_MODE% ^
 --copt=/DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION ^
 --copt=/D_HAS_DEPRECATED_RESULT_OF ^
 --linkopt=/DEFAULTLIB:%LIBEDGETPU_DLL_PATH%.if.lib ^
---experimental_repo_remote_exec ^
---copt=/std:c++latest
-set BAZEL_QUERY_FLAGS=^
---experimental_repo_remote_exec
+--copt=-D__PRETTY_FUNCTION__=__FUNCSIG__
 
 rem PYBIND
 %BAZEL_CMD% build %BAZEL_BUILD_FLAGS% ^
@@ -80,6 +88,9 @@ if not exist %TFLITE_WRAPPER_OUT_DIR% md %TFLITE_WRAPPER_OUT_DIR%
 copy %BAZEL_OUT_DIR%\external\org_tensorflow\tensorflow\lite\python\interpreter_wrapper\_pywrap_tensorflow_interpreter_wrapper.pyd ^
      %TFLITE_WRAPPER_PATH% >NUL
 copy %BAZEL_OUTPUT_BASE%\external\org_tensorflow\tensorflow\lite\python\interpreter.py %TFLITE_WRAPPER_OUT_DIR%
+copy %BAZEL_OUTPUT_BASE%\external\org_tensorflow\tensorflow\lite\python\metrics_interface.py %TFLITE_WRAPPER_OUT_DIR%
+copy %BAZEL_OUTPUT_BASE%\external\org_tensorflow\tensorflow\lite\python\metrics_portable.py %TFLITE_WRAPPER_OUT_DIR%
+type NUL >%TFLITE_WRAPPER_OUT_DIR%\__init__.py
 
 :exit
 exit /b %ERRORLEVEL%

@@ -1,0 +1,13 @@
+common --experimental_repo_remote_exec
+
+build --subcommands
+build --verbose_failures
+build --enable_platform_specific_config
+
+build:linux --crosstool_top=@crosstool//:toolchains
+build:linux --compiler=gcc
+
+build:macos --cxxopt=-std=c++14
+
+build:windows --incompatible_restrict_string_escapes=false
+build:windows --cxxopt=/std:c++latest

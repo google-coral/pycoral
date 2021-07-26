@@ -4,4 +4,7 @@ Title: {{ title|striptags|e }}
 
 <div class="sphinx-reference">
 {% block body %}{% endblock %}
+  <div class="doc-version">
+    <p>API version {{ version }}</p>
+  </div>
 </div>

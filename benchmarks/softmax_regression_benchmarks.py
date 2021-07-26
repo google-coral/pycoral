@@ -14,10 +14,11 @@
 # limitations under the License.
 """Benchmark backprop on small fake data set."""
 
+import sys
 import time
 import numpy as np
 
-from benchmarks import test_utils
+from benchmarks import benchmark_utils
 from pycoral.learn.backprop.softmax_regression import SoftmaxRegression
 
 
@@ -66,7 +67,9 @@ def _benchmark_for_training(num_classes, feature_dim):
 
 
 def main():
-  machine = test_utils.machine_info()
+  print('Python version: ', sys.version)
+  machine = benchmark_utils.machine_info()
+  benchmark_utils.check_cpu_scaling_governor_status()
   # cases are defined by parameter pairs [num_classes, feature_dim].
   cases = [[4, 256], [16, 256], [4, 1024], [16, 1024]]
   results = [('CASE', 'TRAINING_TIME(s)')]
@@ -77,7 +80,7 @@ def main():
           (num_classes, feature_dim))
     results.append((':'.join(str(i) for i in params),
                     _benchmark_for_training(num_classes, feature_dim)))
-  test_utils.save_as_csv(
+  benchmark_utils.save_as_csv(
       'softmax_regression_benchmarks_%s_%s.csv' %
       (machine, time.strftime('%Y%m%d-%H%M%S')), results)
 

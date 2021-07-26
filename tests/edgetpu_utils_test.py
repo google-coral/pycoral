@@ -72,16 +72,22 @@ def required_input_array_size(interpreter):
 # Use --config=asan for better coverage.
 class TestEdgeTpuUtils(unittest.TestCase):
 
+  @classmethod
+  def setUpClass(cls):
+    super(TestEdgeTpuUtils, cls).setUpClass()
+    cls.delegate = edgetpu.load_edgetpu_delegate()
+
   def _default_test_model_path(self):
     return test_utils.test_data_path(
         'mobilenet_v1_1.0_224_quant_edgetpu.tflite')
 
   def test_load_from_model_file(self):
-    edgetpu.make_interpreter(self._default_test_model_path())
+    edgetpu.make_interpreter(
+        self._default_test_model_path(), delegate=self.delegate)
 
   def test_load_from_model_content(self):
     with io.open(self._default_test_model_path(), 'rb') as model_file:
-      edgetpu.make_interpreter(model_file.read())
+      edgetpu.make_interpreter(model_file.read(), delegate=self.delegate)
 
   def test_load_from_invalid_model_path(self):
     with self.assertRaisesRegex(
@@ -144,14 +150,16 @@ class TestEdgeTpuUtils(unittest.TestCase):
     return np.copy(ret)
 
   def test_run_inference_with_different_types(self):
-    interpreter = edgetpu.make_interpreter(self._default_test_model_path())
+    interpreter = edgetpu.make_interpreter(
+        self._default_test_model_path(), delegate=self.delegate)
     interpreter.allocate_tensors()
     input_size = required_input_array_size(interpreter)
     input_data = test_utils.generate_random_input(1, input_size)
     self._run_inference_with_different_input_types(interpreter, input_data)
 
   def test_run_inference_larger_input_size(self):
-    interpreter = edgetpu.make_interpreter(self._default_test_model_path())
+    interpreter = edgetpu.make_interpreter(
+        self._default_test_model_path(), delegate=self.delegate)
     interpreter.allocate_tensors()
     input_size = required_input_array_size(interpreter)
     input_data = test_utils.generate_random_input(1, input_size + 1)
@@ -159,7 +167,8 @@ class TestEdgeTpuUtils(unittest.TestCase):
 
   def test_compare_expected_and_larger_input_size(self):
     if _libgst:
-      interpreter = edgetpu.make_interpreter(self._default_test_model_path())
+      interpreter = edgetpu.make_interpreter(
+          self._default_test_model_path(), delegate=self.delegate)
       interpreter.allocate_tensors()
       input_size = required_input_array_size(interpreter)
       larger_input_data = test_utils.generate_random_input(1, input_size + 1)
@@ -171,7 +180,8 @@ class TestEdgeTpuUtils(unittest.TestCase):
       print('Can not import gi. Skip test on Gst.Buffer input type.')
 
   def test_run_inference_smaller_input_size(self):
-    interpreter = edgetpu.make_interpreter(self._default_test_model_path())
+    interpreter = edgetpu.make_interpreter(
+        self._default_test_model_path(), delegate=self.delegate)
     interpreter.allocate_tensors()
     input_size = required_input_array_size(interpreter)
     input_data = test_utils.generate_random_input(1, input_size - 1)
@@ -180,7 +190,8 @@ class TestEdgeTpuUtils(unittest.TestCase):
       self._run_inference_with_different_input_types(interpreter, input_data)
 
   def test_invoke_with_dma_buffer_model_not_ready(self):
-    interpreter = edgetpu.make_interpreter(self._default_test_model_path())
+    interpreter = edgetpu.make_interpreter(
+        self._default_test_model_path(), delegate=self.delegate)
     input_size = 224 * 224 * 3
     # Note: Exception is triggered because interpreter.allocate_tensors() is not
     # called.
@@ -189,7 +200,8 @@ class TestEdgeTpuUtils(unittest.TestCase):
       edgetpu.invoke_with_dmabuffer(interpreter._native_handle(), 0, input_size)
 
   def test_invoke_with_mem_buffer_model_not_ready(self):
-    interpreter = edgetpu.make_interpreter(self._default_test_model_path())
+    interpreter = edgetpu.make_interpreter(
+        self._default_test_model_path(), delegate=self.delegate)
     input_size = 224 * 224 * 3
     np_input = np.zeros(input_size, dtype=np.uint8)
     # Note: Exception is triggered because interpreter.allocate_tensors() is not
@@ -201,6 +213,12 @@ class TestEdgeTpuUtils(unittest.TestCase):
 
   def test_list_edge_tpu_paths(self):
     self.assertGreater(len(edgetpu.list_edge_tpus()), 0)
+
+  def test_set_verbosity(self):
+    # Simply sets the verbosity and ensure it returns success.
+    self.assertTrue(edgetpu.set_verbosity(10))
+    # Returns the verbosity back to zero.
+    self.assertTrue(edgetpu.set_verbosity(0))
 
 
 if __name__ == '__main__':

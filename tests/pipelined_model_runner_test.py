@@ -33,9 +33,13 @@ def _get_ref_result(ref_model, input_tensors):
   output_details = interpreter.get_output_details()
   assert len(output_details) == 1
 
-  interpreter.tensor(input_details[0]['index'])()[0][:, :] = input_tensors[0]
+  input_tensor, = input_tensors.values()
+  interpreter.tensor(input_details[0]['index'])()[0][:, :] = input_tensor
   interpreter.invoke()
-  return np.array(interpreter.tensor(output_details[0]['index'])())
+  return {
+      output_details[0]['name']:
+          np.array(interpreter.tensor(output_details[0]['index'])())
+  }
 
 
 def _get_devices(num_devices):
@@ -66,7 +70,7 @@ def _get_devices(num_devices):
   ]
 
 
-def _make_runner(model_paths, devices):
+def _make_runner(model_paths, devices, allocate_tensors=True):
   print('Using devices: ', devices)
   print('Using models: ', model_paths)
 
@@ -77,77 +81,92 @@ def _make_runner(model_paths, devices):
       make_interpreter(test_utils.test_data_path(m), d)
       for m, d in zip(model_paths, devices)
   ]
-  for interpreter in interpreters:
-    interpreter.allocate_tensors()
+  if allocate_tensors:
+    for interpreter in interpreters:
+      interpreter.allocate_tensors()
   return pipeline.PipelinedModelRunner(interpreters)
 
 
 class PipelinedModelRunnerTest(unittest.TestCase):
 
-  def setUp(self):
-    super(PipelinedModelRunnerTest, self).setUp()
-    model_segments = [
-        'pipeline/inception_v3_299_quant_segment_0_of_2_edgetpu.tflite',
-        'pipeline/inception_v3_299_quant_segment_1_of_2_edgetpu.tflite',
-    ]
+  _MODEL_SEGMENTS = [
+      'pipeline/inception_v3_299_quant_segment_0_of_2_edgetpu.tflite',
+      'pipeline/inception_v3_299_quant_segment_1_of_2_edgetpu.tflite',
+  ]
+  _REF_MODEL = 'inception_v3_299_quant_edgetpu.tflite'
+
+  def _prepare_pipeline_inference(self,
+                                  model_segments,
+                                  ref_model=None,
+                                  allocate_tensors=True):
     self.runner = _make_runner(model_segments,
-                               _get_devices(len(model_segments)))
+                               _get_devices(len(model_segments)),
+                               allocate_tensors)
 
     input_details = self.runner.interpreters()[0].get_input_details()
     self.assertEqual(len(input_details), 1)
     self.input_shape = input_details[0]['shape']
 
     np.random.seed(0)
-    self.input_tensors = [
-        np.random.randint(0, 256, size=self.input_shape, dtype=np.uint8)
-    ]
+    self.input_tensors = {
+        'input':
+            np.random.randint(0, 256, size=self.input_shape, dtype=np.uint8)
+    }
 
-    ref_model = 'inception_v3_299_quant_edgetpu.tflite'
-    self.ref_result = _get_ref_result(ref_model, self.input_tensors)
+    if ref_model:
+      self.ref_result = _get_ref_result(ref_model, self.input_tensors)
+    else:
+      self.ref_result = None
 
   def test_bad_segments(self):
-    model_segments = [
+    bad_model_segments = [
         'pipeline/inception_v3_299_quant_segment_1_of_2_edgetpu.tflite',
         'pipeline/inception_v3_299_quant_segment_0_of_2_edgetpu.tflite',
     ]
     with self.assertRaisesRegex(
         ValueError, r'Interpreter [\d]+ can not get its input tensors'):
-      unused_runner = _make_runner(model_segments, [None] * len(model_segments))
+      unused_runner = _make_runner(bad_model_segments,
+                                   [None] * len(self._MODEL_SEGMENTS))
 
   def test_unsupported_input_type(self):
+    self._prepare_pipeline_inference(self._MODEL_SEGMENTS)
     with self.assertRaisesRegex(
         ValueError, 'Input should be a list of numpy array of type*'):
-      self.runner.push([np.random.random(self.input_shape)])
+      self.runner.push({'input': np.random.random(self.input_shape)})
 
   def test_check_unconsumed_tensor(self):
     # Everything should work fine without crashing.
+    self._prepare_pipeline_inference(self._MODEL_SEGMENTS)
     self.runner.push(self.input_tensors)
 
   def test_push_and_pop(self):
-    self.assertTrue(self.runner.push(self.input_tensors))
+    self._prepare_pipeline_inference(self._MODEL_SEGMENTS, self._REF_MODEL)
+    self.runner.push(self.input_tensors)
     result = self.runner.pop()
-    self.assertEqual(len(result), 1)
-    np.testing.assert_equal(result[0], self.ref_result)
+    np.testing.assert_equal(result, self.ref_result)
 
-    # Check after [] is pushed.
-    self.assertTrue(self.runner.push([]))
-    self.assertFalse(self.runner.push(self.input_tensors))
+    # Check after {} is pushed.
+    self.runner.push({})
+    with self.assertRaisesRegex(RuntimeError,
+                                'Pipeline was turned off before.'):
+      self.runner.push(self.input_tensors)
     self.assertIsNone(self.runner.pop())
 
   def test_producer_and_consumer_threads(self):
+    self._prepare_pipeline_inference(self._MODEL_SEGMENTS, self._REF_MODEL)
     num_requests = 5
 
     def producer(self):
       for _ in range(num_requests):
         self.runner.push(self.input_tensors)
-      self.runner.push([])
+      self.runner.push({})
 
     def consumer(self):
       while True:
         result = self.runner.pop()
         if not result:
           break
-        np.testing.assert_equal(result[0], self.ref_result)
+        np.testing.assert_equal(result, self.ref_result)
 
     producer_thread = threading.Thread(target=producer, args=(self,))
     consumer_thread = threading.Thread(target=consumer, args=(self,))
@@ -158,6 +177,7 @@ class PipelinedModelRunnerTest(unittest.TestCase):
     consumer_thread.join()
 
   def test_set_input_and_output_queue_size(self):
+    self._prepare_pipeline_inference(self._MODEL_SEGMENTS)
     self.runner.set_input_queue_size(1)
     self.runner.set_output_queue_size(1)
     num_segments = len(self.runner.interpreters())
@@ -170,7 +190,7 @@ class PipelinedModelRunnerTest(unittest.TestCase):
     # Push `max_buffered_requests` to pipeline, such that the next `push` will
     # be blocking as there is no consumer to process the results at the moment.
     for _ in range(max_buffered_requests):
-      self.assertTrue(self.runner.push(self.input_tensors))
+      self.runner.push(self.input_tensors)
 
     # Sleep for `max_buffered_requests` seconds to make sure the first request
     # already reaches the last segments. This assumes that it takes 1 second for
@@ -178,8 +198,8 @@ class PipelinedModelRunnerTest(unittest.TestCase):
     time.sleep(max_buffered_requests)
 
     def push_new_request(self):
-      self.assertTrue(self.runner.push(self.input_tensors))
-      self.assertTrue(self.runner.push([]))
+      self.runner.push(self.input_tensors)
+      self.runner.push({})
 
     producer_thread = threading.Thread(target=push_new_request, args=(self,))
     producer_thread.start()
@@ -198,6 +218,21 @@ class PipelinedModelRunnerTest(unittest.TestCase):
     self.assertEqual(processed_requests, max_buffered_requests + 1)
     producer_thread.join(1.0)
     self.assertFalse(producer_thread.is_alive())
+
+  def test_interpreter_inference_error(self):
+    self._prepare_pipeline_inference(
+        self._MODEL_SEGMENTS, allocate_tensors=False)
+    # Interpreter error can only be caught by the first pop call.
+    self.runner.push(self.input_tensors)
+    with self.assertRaisesRegex(
+        RuntimeError,
+        'Segment 0 runner error: Invoke called on model that is not ready.'):
+      self.runner.pop()
+    # Once error occurs, the following Push calls will fail.
+    with self.assertRaisesRegex(
+        RuntimeError,
+        'Segment 0 runner error: Invoke called on model that is not ready.'):
+      self.runner.push(self.input_tensors)
 
 
 if __name__ == '__main__':

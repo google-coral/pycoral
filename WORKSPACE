@@ -15,35 +15,29 @@ workspace(name = "pycoral")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-TENSORFLOW_COMMIT = "48c3bae94a8b324525b45f157d638dfd4e8c3be1"
-# Command to calculate: curl -L <FILE-URL> | sha256sum | awk '{print $1}'
-TENSORFLOW_SHA256 = "363420a67b4cfa271cd21e5c8fac0d7d91b18b02180671c3f943c887122499d8"
-
-# These values come from the Tensorflow workspace. If the TF commit is updated,
-# these should be updated to match.
-IO_BAZEL_RULES_CLOSURE_COMMIT = "308b05b2419edb5c8ee0471b67a40403df940149"
-IO_BAZEL_RULES_CLOSURE_SHA256 = "5b00383d08dd71f28503736db0500b6fb4dda47489ff5fc6bed42557c07c6ba9"
-
-CORAL_CROSSTOOL_COMMIT = "142e930ac6bf1295ff3ba7ba2b5b6324dfb42839"
-CORAL_CROSSTOOL_SHA256 = "088ef98b19a45d7224be13636487e3af57b1564880b67df7be8b3b7eee4a1bfc"
-
 # Configure libedgetpu and downstream libraries (TF and Crosstool).
-new_local_repository(
+local_repository(
     name = "libedgetpu",
     path = "libedgetpu",
-    build_file = "libedgetpu/BUILD"
 )
 
 load("@libedgetpu//:workspace.bzl", "libedgetpu_dependencies")
-libedgetpu_dependencies(TENSORFLOW_COMMIT, TENSORFLOW_SHA256,
-                        IO_BAZEL_RULES_CLOSURE_COMMIT,IO_BAZEL_RULES_CLOSURE_SHA256,
-                        CORAL_CROSSTOOL_COMMIT,CORAL_CROSSTOOL_SHA256)
+libedgetpu_dependencies()
 
-load("@org_tensorflow//tensorflow:workspace.bzl", "tf_workspace")
-tf_workspace(tf_repo_name = "org_tensorflow")
+load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
+tf_workspace3()
+
+load("@org_tensorflow//tensorflow:workspace2.bzl", "tf_workspace2")
+tf_workspace2()
+
+load("@org_tensorflow//tensorflow:workspace1.bzl", "tf_workspace1")
+tf_workspace1()
+
+load("@org_tensorflow//tensorflow:workspace0.bzl", "tf_workspace0")
+tf_workspace0()
 
 load("@coral_crosstool//:configure.bzl", "cc_crosstool")
-cc_crosstool(name = "crosstool")
+cc_crosstool(name = "crosstool", cpp_version = "c++14")
 
 http_archive(
     name = "com_google_glog",
@@ -60,10 +54,9 @@ glog_library(with_gflags=0)
 """,
 )
 
-new_local_repository(
+local_repository(
     name = "libcoral",
     path = "libcoral",
-    build_file_content = ""
 )
 
 new_local_repository(
@@ -74,28 +67,3 @@ new_local_repository(
 
 load("@org_tensorflow//third_party/py:python_configure.bzl", "python_configure")
 python_configure(name = "local_config_python")
-new_local_repository(
-    name = "python_linux",
-    path = "/usr/include",
-    build_file = "third_party/python/linux/BUILD",
-)
-
-new_local_repository(
-    name = "python_windows",
-    path = "third_party/python/windows",
-    build_file = "third_party/python/windows/BUILD",
-)
-
-# Use Python from MacPorts.
-new_local_repository(
-    name = "python_darwin",
-    path = "/opt/local/Library/Frameworks/Python.framework/Versions",
-    build_file = "third_party/python/darwin/BUILD",
-)
-
-new_local_repository(
-    name = "python",
-    path = "third_party/python",
-    build_file = "third_party/python/BUILD",
-)
-

@@ -27,6 +27,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import inspect
 import os
 import sys
 import unittest.mock
@@ -36,9 +37,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 # Mock modules not needed for docs
 sys.modules.update([('tflite_runtime', unittest.mock.MagicMock())])
 sys.modules.update([('tflite_runtime.interpreter', unittest.mock.MagicMock())])
-sys.modules.update([('pycoral.pybind', unittest.mock.MagicMock())])
-sys.modules.update([('pycoral.pybind._pywrap_coral',
-                     unittest.mock.MagicMock())])
+
 
 # -- Project information -----------------------------------------------------
 
@@ -47,7 +46,7 @@ copyright = '2020, Google LLC'
 author = 'Google LLC'
 
 # The short X.Y version
-version = '1.0'
+version = '2.0'
 # The full version, including alpha/beta/rc tags
 release = ''
 
@@ -65,6 +64,7 @@ extensions = [
     'sphinx.ext.intersphinx',  # Enables linking to other libs like Pillow
     'sphinx.ext.coverage',
     'sphinx.ext.napoleon',  # Converts Google-style code comments to RST
+    'sphinx.ext.linkcode',  # Creates links to each API source code
 ]
 
 # Autodoc configurations
@@ -120,3 +120,32 @@ html_theme = 'coral_theme'
 html_theme_path = ['.']
 html_file_suffix = '.md'
 html_link_suffix = '/'
+
+
+# Callback from sphinx.ext.linkcode to resolve links to source code
+def linkcode_resolve(domain, info):
+  if domain != 'py':
+    return None
+  if not info['module']:
+    return None
+
+  filename = info['module'].replace('.', '/')
+  linespec = ''
+
+  try:
+    obj = sys.modules[info['module']]
+    for part in info['fullname'].split('.'):
+      obj = getattr(obj, part)
+    source, lineno = inspect.getsourcelines(obj)
+    linespec = '#L%d-L%d' % (lineno, lineno + len(source) - 1)
+  except TypeError:
+    # inspect.getsourcelines() fails this way for properties
+    # But let's not link them anyway because all the links look sloppy
+    return None
+  except OSError:
+    # inspect.getsourcelines() fails this way for namedtuples
+    # So let's keep the link but they won't get line numbers
+    pass
+
+  return 'https://github.com/google-coral/pycoral/blob/master/%s.py%s' % (
+      filename, linespec)

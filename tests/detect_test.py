@@ -18,9 +18,8 @@ from PIL import Image
 import unittest
 from pycoral.adapters import common
 from pycoral.adapters import detect
-from pycoral.utils.edgetpu import make_interpreter
-from tests.test_utils import coral_test_main
-from tests.test_utils import test_data_path
+from pycoral.utils import edgetpu
+from tests import test_utils
 
 BBox = detect.BBox
 
@@ -28,10 +27,11 @@ CAT = 16  # coco_labels.txt
 ABYSSINIAN = 0  # pet_labels.txt
 
 
-def get_objects(model_file, image_file, score_threshold=0.0):
-  interpreter = make_interpreter(test_data_path(model_file))
+def get_objects(model_file, delegate, image_file, score_threshold=0.0):
+  interpreter = edgetpu.make_interpreter(
+      test_utils.test_data_path(model_file), delegate=delegate)
   interpreter.allocate_tensors()
-  image = Image.open(test_data_path(image_file))
+  image = Image.open(test_utils.test_data_path(image_file))
   _, scale = common.set_resized_input(
       interpreter, image.size, lambda size: image.resize(size, Image.ANTIALIAS))
   interpreter.invoke()
@@ -43,8 +43,15 @@ def face_model():
   return 'ssd_mobilenet_v2_face_quant_postprocess_edgetpu.tflite'
 
 
-def coco_model(version):
+def tf1_coco_model(version):
   return 'ssd_mobilenet_v%d_coco_quant_postprocess_edgetpu.tflite' % version
+
+
+def tf2_coco_model(version):
+  if version == 1:
+    return 'tf2_ssd_mobilenet_v1_fpn_640x640_coco17_ptq_edgetpu.tflite'
+  else:
+    return 'tf2_ssd_mobilenet_v2_coco17_ptq_edgetpu.tflite'
 
 
 def fine_tuned_model():
@@ -98,21 +105,26 @@ class BBoxTest(unittest.TestCase):
 
 class DetectTest(unittest.TestCase):
 
-  def assert_bbox_almost_equal(self, first, second, overlap_factor=0.95):
+  @classmethod
+  def setUpClass(cls):
+    super(DetectTest, cls).setUpClass()
+    cls.delegate = edgetpu.load_edgetpu_delegate()
+
+  def assert_bbox_almost_equal(self, first, second, overlap_factor=0.8):
     self.assertGreaterEqual(
         BBox.iou(first, second),
         overlap_factor,
         msg='iou(%s, %s) is less than expected' % (first, second))
 
   def test_face(self):
-    objs = get_objects(face_model(), 'grace_hopper.bmp')
+    objs = get_objects(face_model(), self.delegate, 'grace_hopper.bmp')
     self.assertEqual(len(objs), 1)
     self.assertGreater(objs[0].score, 0.996)
     self.assert_bbox_almost_equal(objs[0].bbox,
                                   BBox(xmin=125, ymin=40, xmax=402, ymax=363))
 
-  def test_coco_v1(self):
-    objs = get_objects(coco_model(version=1), 'cat.bmp')
+  def test_tf1_coco_v1(self):
+    objs = get_objects(tf1_coco_model(version=1), self.delegate, 'cat.bmp')
     self.assertGreater(len(objs), 0)
     obj = objs[0]
     self.assertEqual(obj.id, CAT)
@@ -120,8 +132,8 @@ class DetectTest(unittest.TestCase):
     self.assert_bbox_almost_equal(obj.bbox,
                                   BBox(xmin=29, ymin=39, xmax=377, ymax=347))
 
-  def test_coco_v2(self):
-    objs = get_objects(coco_model(version=2), 'cat.bmp')
+  def test_tf1_coco_v2(self):
+    objs = get_objects(tf1_coco_model(version=2), self.delegate, 'cat.bmp')
     self.assertGreater(len(objs), 0)
     obj = objs[0]
     self.assertEqual(obj.id, CAT)
@@ -129,8 +141,26 @@ class DetectTest(unittest.TestCase):
     self.assert_bbox_almost_equal(obj.bbox,
                                   BBox(xmin=43, ymin=35, xmax=358, ymax=333))
 
+  def test_tf2_coco_v1(self):
+    objs = get_objects(tf2_coco_model(version=1), self.delegate, 'cat.bmp')
+    self.assertGreater(len(objs), 0)
+    obj = objs[0]
+    self.assertEqual(obj.id, CAT)
+    self.assertGreater(obj.score, 0.7)
+    self.assert_bbox_almost_equal(obj.bbox,
+                                  BBox(xmin=43, ymin=35, xmax=358, ymax=333))
+
+  def test_tf2_coco_v2(self):
+    objs = get_objects(tf2_coco_model(version=2), self.delegate, 'cat.bmp')
+    self.assertGreater(len(objs), 0)
+    obj = objs[0]
+    self.assertEqual(obj.id, CAT)
+    self.assertGreater(obj.score, 0.7)
+    self.assert_bbox_almost_equal(obj.bbox,
+                                  BBox(xmin=43, ymin=35, xmax=358, ymax=333))
+
   def test_fine_tuned(self):
-    objs = get_objects(fine_tuned_model(), 'cat.bmp')
+    objs = get_objects(fine_tuned_model(), self.delegate, 'cat.bmp')
     self.assertGreater(len(objs), 0)
     obj = objs[0]
     self.assertEqual(obj.id, ABYSSINIAN)
@@ -140,4 +170,4 @@ class DetectTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  coral_test_main()
+  test_utils.coral_test_main()

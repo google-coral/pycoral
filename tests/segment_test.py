@@ -17,9 +17,8 @@ from PIL import Image
 import unittest
 from pycoral.adapters import common
 from pycoral.adapters import segment
-from pycoral.utils.edgetpu import make_interpreter
-from tests.test_utils import coral_test_main
-from tests.test_utils import test_data_path
+from pycoral.utils import edgetpu
+from tests import test_utils
 
 
 def deeplab_model_dm05(tpu):
@@ -42,11 +41,12 @@ def array_iou(a, b):
   return count / (a.size + b.size - count)
 
 
-def segment_image(model_file, image_file, mask_file):
-  interpreter = make_interpreter(test_data_path(model_file))
+def segment_image(model_file, delegate, image_file, mask_file):
+  interpreter = edgetpu.make_interpreter(
+      test_utils.test_data_path(model_file), delegate=delegate)
   interpreter.allocate_tensors()
 
-  image = Image.open(test_data_path(image_file)).resize(
+  image = Image.open(test_utils.test_data_path(image_file)).resize(
       common.input_size(interpreter), Image.ANTIALIAS)
   common.set_input(interpreter, image)
   interpreter.invoke()
@@ -55,18 +55,23 @@ def segment_image(model_file, image_file, mask_file):
   if len(result.shape) > 2:
     result = np.argmax(result, axis=2)
 
-  reference = np.asarray(Image.open(test_data_path(mask_file)))
+  reference = np.asarray(Image.open(test_utils.test_data_path(mask_file)))
   return array_iou(result, reference)
 
 
 class SegmentTest(unittest.TestCase):
+
+  @classmethod
+  def setUpClass(cls):
+    super(SegmentTest, cls).setUpClass()
+    cls.delegate = edgetpu.load_edgetpu_delegate()
 
   def test_deeplab_dm10(self):
     for tpu in [False, True]:
       with self.subTest(tpu=tpu):
         self.assertGreater(
             segment_image(
-                deeplab_model_dm10(tpu), 'bird_segmentation.bmp',
+                deeplab_model_dm10(tpu), self.delegate, 'bird_segmentation.bmp',
                 'bird_segmentation_mask.bmp'), 0.90)
 
   def test_deeplab_dm05(self):
@@ -74,7 +79,7 @@ class SegmentTest(unittest.TestCase):
       with self.subTest(tpu=tpu):
         self.assertGreater(
             segment_image(
-                deeplab_model_dm05(tpu), 'bird_segmentation.bmp',
+                deeplab_model_dm05(tpu), self.delegate, 'bird_segmentation.bmp',
                 'bird_segmentation_mask.bmp'), 0.90)
 
   def test_keras_post_training_unet_mv2_128(self):
@@ -82,18 +87,18 @@ class SegmentTest(unittest.TestCase):
       with self.subTest(tpu=tpu):
         self.assertGreater(
             segment_image(
-                keras_post_training_unet_mv2(tpu, 128), 'dog_segmentation.bmp',
-                'dog_segmentation_mask.bmp'), 0.86)
+                keras_post_training_unet_mv2(tpu, 128), self.delegate,
+                'dog_segmentation.bmp', 'dog_segmentation_mask.bmp'), 0.86)
 
   def test_keras_post_training_unet_mv2_256(self):
     for tpu in [False, True]:
       with self.subTest(tpu=tpu):
         self.assertGreater(
             segment_image(
-                keras_post_training_unet_mv2(tpu, 256),
+                keras_post_training_unet_mv2(tpu, 256), self.delegate,
                 'dog_segmentation_256.bmp', 'dog_segmentation_mask_256.bmp'),
             0.81)
 
 
 if __name__ == '__main__':
-  coral_test_main()
+  test_utils.coral_test_main()

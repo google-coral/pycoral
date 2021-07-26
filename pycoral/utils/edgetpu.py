@@ -26,6 +26,7 @@ from pycoral.pybind._pywrap_coral import InvokeWithBytes as invoke_with_bytes
 from pycoral.pybind._pywrap_coral import InvokeWithDmaBuffer as invoke_with_dmabuffer
 from pycoral.pybind._pywrap_coral import InvokeWithMemBuffer as invoke_with_membuffer
 from pycoral.pybind._pywrap_coral import ListEdgeTpus as list_edge_tpus
+from pycoral.pybind._pywrap_coral import SetVerbosity as set_verbosity
 from pycoral.pybind._pywrap_coral import SupportsDmabuf as supports_dmabuf
 import platform
 import tflite_runtime.interpreter as tflite
@@ -38,32 +39,52 @@ _EDGETPU_SHARED_LIB = {
 
 
 def load_edgetpu_delegate(options=None):
-  """Loads the Edge TPU delegate with the given options."""
+  """Loads the Edge TPU delegate with the given options.
+
+  Args:
+    options (dict): Options that are passed to the Edge TPU delegate, via
+      ``tf.lite.load_delegate``. The only option you should use is
+      "device", which defines the Edge TPU to use. Supported values are the same
+      as `device` in :func:`make_interpreter`.
+  Returns:
+    The Edge TPU delegate object.
+  """
   return tflite.load_delegate(_EDGETPU_SHARED_LIB, options or {})
 
 
-def make_interpreter(model_path_or_content, device=None):
-  """Returns a new interpreter instance.
+def make_interpreter(model_path_or_content, device=None, delegate=None):
+  """Creates a new ``tf.lite.Interpreter`` instance using the given model.
 
-  Interpreter is created from either model path or model content and attached
-  to an Edge TPU device.
+  **Note:** If you have multiple Edge TPUs, you should always specify the
+  ``device`` argument.
 
   Args:
      model_path_or_content (str or bytes): `str` object is interpreted as
        model path, `bytes` object is interpreted as model content.
-     device (str): The type of Edge TPU device you want:
+     device (str): The Edge TPU device you want:
 
-       + None      -- use any Edge TPU
-       + ":<N>"    -- use N-th Edge TPU
+       + None      -- use any Edge TPU (this is the default)
+       + ":<N>"    -- use N-th Edge TPU (this corresponds to the enumerated
+         index position from :func:`list_edge_tpus`)
        + "usb"     -- use any USB Edge TPU
        + "usb:<N>" -- use N-th USB Edge TPU
        + "pci"     -- use any PCIe Edge TPU
        + "pci:<N>" -- use N-th PCIe Edge TPU
 
+       If left as None, you cannot reliably predict which device you'll get.
+       So if you have multiple Edge TPUs and want to run a specific model on
+       each one, then you must specify the device.
+     delegate: A pre-loaded Edge TPU delegate object, as provided by
+       :func:`load_edgetpu_delegate`. If provided, the `device` argument
+       is ignored.
+
   Returns:
      New ``tf.lite.Interpreter`` instance.
   """
-  delegates = [load_edgetpu_delegate({'device': device} if device else {})]
+  if delegate:
+    delegates = [delegate]
+  else:
+    delegates = [load_edgetpu_delegate({'device': device} if device else {})]
   if isinstance(model_path_or_content, bytes):
     return tflite.Interpreter(
         model_content=model_path_or_content, experimental_delegates=delegates)

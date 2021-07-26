@@ -25,21 +25,23 @@ The reference number is measured on:
   - 'aarch64': Edge TPU dev board.
 """
 
+import sys
 import time
 import timeit
 
 import numpy as np
 
-from benchmarks import test_utils
-from pycoral.utils.edgetpu import make_interpreter
+from benchmarks import benchmark_utils
+from pycoral.utils import edgetpu
 
 
-def run_benchmark(model):
-  """Returns average inference time in ms on specified model on random input."""
+def run_benchmark(model, delegate):
+  """Returns average inference time in ms on specified model with random input."""
 
   print('Benchmark for [%s]' % model)
-  print('model path = %s' % test_utils.test_data_path(model))
-  interpreter = make_interpreter(test_utils.test_data_path(model))
+  print('model path = %s' % benchmark_utils.test_data_path(model))
+  interpreter = edgetpu.make_interpreter(
+      benchmark_utils.test_data_path(model), delegate=delegate)
   interpreter.allocate_tensors()
   iterations = 200 if 'edgetpu' in model else 20
 
@@ -55,20 +57,22 @@ def run_benchmark(model):
 
 
 def main():
-  args = test_utils.parse_args()
-  machine = test_utils.machine_info()
-  test_utils.check_cpu_scaling_governor_status()
-  models, reference = test_utils.read_reference(
+  print('Python version: ', sys.version)
+  args = benchmark_utils.parse_args()
+  machine = benchmark_utils.machine_info()
+  benchmark_utils.check_cpu_scaling_governor_status()
+  models, reference = benchmark_utils.read_reference(
       'inference_reference_%s.csv' % machine)
 
   results = [('MODEL', 'INFERENCE_TIME')]
+  delegate = edgetpu.load_edgetpu_delegate()
   for i, model in enumerate(models, start=1):
     print('-------------- Model %d / %d ---------------' % (i, len(models)))
-    results.append((model, run_benchmark(model)))
-  test_utils.save_as_csv(
+    results.append((model, run_benchmark(model, delegate)))
+  benchmark_utils.save_as_csv(
       'inference_benchmarks_%s_%s.csv' %
       (machine, time.strftime('%Y%m%d-%H%M%S')), results)
-  test_utils.check_result(reference, results, args.enable_assertion)
+  benchmark_utils.check_result(reference, results, args.enable_assertion)
 
 
 if __name__ == '__main__':

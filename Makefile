@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 SHELL := /bin/bash
-PYTHON ?= python3
+PYTHON ?= $(shell which python3)
 MAKEFILE_DIR := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
 PY3_VER ?= $(shell $(PYTHON) -c "import sys;print('%d%d' % sys.version_info[:2])")
 OS := $(shell uname -s)
+
+ifeq ($(PYTHON),)
+$(error PYTHON must be set)
+endif
 
 # Allowed CPU values: k8, armv7a, aarch64, darwin
 ifeq ($(OS),Linux)
@@ -36,19 +40,9 @@ $(error COMPILATION_MODE must be opt, dbg or fastbuild)
 endif
 
 BAZEL_OUT_DIR :=  $(MAKEFILE_DIR)/bazel-out/$(CPU)-$(COMPILATION_MODE)/bin
-COMMON_BAZEL_BUILD_FLAGS_Linux := --crosstool_top=@crosstool//:toolchains \
-                                  --compiler=gcc
-COMMON_BAZEL_BUILD_FLAGS_Darwin :=
 COMMON_BAZEL_BUILD_FLAGS := --compilation_mode=$(COMPILATION_MODE) \
                             --copt=-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION \
-                            --verbose_failures \
-                            --sandbox_debug \
-                            --subcommands \
-                            --define PY3_VER=$(PY3_VER) \
-                            --action_env PYTHON_BIN_PATH=$(shell which $(PYTHON)) \
-                            --cpu=$(CPU) \
-                            --experimental_repo_remote_exec \
-                            $(COMMON_BAZEL_BUILD_FLAGS_$(OS))
+                            --cpu=$(CPU)
 
 BAZEL_BUILD_FLAGS_Linux := --linkopt=-L$(MAKEFILE_DIR)/libedgetpu_bin/direct/$(CPU) \
                            --linkopt=-l:libedgetpu.so.1
@@ -95,14 +89,13 @@ CORAL_WRAPPER_OUT_DIR  := $(MAKEFILE_DIR)/pycoral/pybind
 TFLITE_WRAPPER_OUT_DIR := $(MAKEFILE_DIR)/tflite_runtime
 
 TENSORFLOW_DIR = $(shell bazel info output_base)/external/org_tensorflow/
+TENSORFLOW_VERSION_SUFFIX := .post1
 TENSORFLOW_VERSION = $(shell bazel aquery $(TFLITE_BAZEL_BUILD_FLAGS) $(TFLITE_WRAPPER_TARGET) >> /dev/null && \
-	                     grep "_VERSION = " "${TENSORFLOW_DIR}/tensorflow/tools/pip_package/setup.py" | cut -d= -f2 | sed "s/[ '-]//g")
-TENSORFLOW_COMMIT = $(shell grep "TENSORFLOW_COMMIT =" $(MAKEFILE_DIR)/WORKSPACE | grep -o '[0-9a-f]\{40\}')
+                       grep "_VERSION = " "${TENSORFLOW_DIR}/tensorflow/tools/pip_package/setup.py" | cut -d= -f2 | sed "s/[ '-]//g")$(TENSORFLOW_VERSION_SUFFIX)
+TENSORFLOW_COMMIT = $(shell bazel query "@libedgetpu_properties//..." | grep tensorflow_commit | cut -d\# -f2)
 
 TFLITE_RUNTIME_VERSION = $(TENSORFLOW_VERSION)
 TFLITE_RUNTIME_DIR := /tmp/tflite_runtime_root
-
-EDGETPU_RUNTIME_DIR := /tmp/edgetpu_runtime
 
 # $(1): Package version
 # $(2): Wrapper files
@@ -113,12 +106,9 @@ echo "__version__ = '$(1)'" \
 echo "__git_version__ = '$(TENSORFLOW_COMMIT)'" \
      >> $(TFLITE_RUNTIME_DIR)/tflite_runtime/__init__.py
 cp $(MAKEFILE_DIR)/tflite_runtime/$(2) \
-   $(TENSORFLOW_DIR)/tensorflow/lite/python/interpreter.py \
+   $(TENSORFLOW_DIR)/tensorflow/lite/python/{interpreter.py,metrics_interface.py,metrics_portable.py} \
    $(TFLITE_RUNTIME_DIR)/tflite_runtime/
-sed -e '/include_package_data=True/a\'$$'\n''\    has_ext_modules = lambda: True,' \
-    -e '/pybind11/d' \
-    -e 's/numpy >= 1.16.0/numpy >= 1.12.1/' \
-    $(TENSORFLOW_DIR)/tensorflow/lite/tools/pip_package/setup_with_bazel.py \
+sed -e "s/'numpy.*/'numpy>=1.16.0',/" $(TENSORFLOW_DIR)/tensorflow/lite/tools/pip_package/setup_with_binary.py \
     > $(TFLITE_RUNTIME_DIR)/setup.py
 endef
 
@@ -152,7 +142,7 @@ endef
 all: pybind tflite
 
 pybind:
-	bazel build $(BAZEL_BUILD_FLAGS) \
+	PYTHON_BIN_PATH=$(PYTHON) bazel build $(BAZEL_BUILD_FLAGS) \
 	    --embed_label='TENSORFLOW_COMMIT=$(TENSORFLOW_COMMIT)' \
 	    --stamp \
 	    //src:_pywrap_coral
@@ -161,12 +151,13 @@ pybind:
 	cp -f $(BAZEL_OUT_DIR)/src/_pywrap_coral.so $(CORAL_WRAPPER_OUT_DIR)/$(CORAL_WRAPPER_NAME)
 
 tflite:
-	bazel build $(TFLITE_BAZEL_BUILD_FLAGS) $(TFLITE_WRAPPER_TARGET)
+	PYTHON_BIN_PATH=$(PYTHON) bazel build $(TFLITE_BAZEL_BUILD_FLAGS) $(TFLITE_WRAPPER_TARGET)
 	mkdir -p $(TFLITE_WRAPPER_OUT_DIR)
 	cp -f $(BAZEL_OUT_DIR)/external/org_tensorflow/tensorflow/lite/python/interpreter_wrapper/_pywrap_tensorflow_interpreter_wrapper.so \
 	      $(TFLITE_WRAPPER_OUT_DIR)/$(TFLITE_WRAPPER_NAME)
-	cp -f $(TENSORFLOW_DIR)/tensorflow/lite/python/interpreter.py \
+	cp -f $(TENSORFLOW_DIR)/tensorflow/lite/python/{interpreter.py,metrics_interface.py,metrics_portable.py} \
 	      $(TFLITE_WRAPPER_OUT_DIR)
+	touch $(TFLITE_WRAPPER_OUT_DIR)/__init__.py
 
 clean:
 	rm -rf $(MAKEFILE_DIR)/bazel-* \
@@ -219,18 +210,7 @@ tflite-deb:
 	   $(MAKEFILE_DIR)/dist
 
 runtime:
-	rm -rf $(EDGETPU_RUNTIME_DIR) && mkdir -p $(EDGETPU_RUNTIME_DIR)/{libedgetpu,third_party}
-	cp -r $(MAKEFILE_DIR)/libedgetpu_bin/{direct,throttled,LICENSE.txt,*.h,*.rules} \
-	      $(EDGETPU_RUNTIME_DIR)/libedgetpu
-	cp -r $(MAKEFILE_DIR)/libcoral/third_party/{coral_accelerator_windows,libusb_win,usbdk} \
-	      $(EDGETPU_RUNTIME_DIR)/third_party
-	cp -r $(MAKEFILE_DIR)/scripts/runtime/{install.sh,uninstall.sh} \
-	      $(MAKEFILE_DIR)/scripts/windows/{install.bat,uninstall.bat} \
-	      $(EDGETPU_RUNTIME_DIR)
-	mkdir -p $(MAKEFILE_DIR)/dist
-	(cd $(shell dirname $(EDGETPU_RUNTIME_DIR)) && \
-	 zip -r $(MAKEFILE_DIR)/dist/edgetpu_runtime_$(shell date '+%Y%m%d').zip \
-	        $(shell basename $(EDGETPU_RUNTIME_DIR)))
+	make LIBEDGETPU_BIN=$(MAKEFILE_DIR)/libedgetpu_bin DIST_DIR=$(MAKEFILE_DIR)/dist -C $(MAKEFILE_DIR)/libedgetpu runtime
 
 help:
 	@echo "make all          - Build all native code"

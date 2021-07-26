@@ -31,21 +31,21 @@ Note:
 """
 
 import logging
+import sys
 import threading
 import time
 
 from PIL import Image
 
-from benchmarks import test_utils
+from benchmarks import benchmark_utils
 from pycoral.adapters import classify
 from pycoral.adapters import common
 from pycoral.adapters import detect
-from pycoral.utils.edgetpu import list_edge_tpus
-from pycoral.utils.edgetpu import make_interpreter
+from pycoral.utils import edgetpu
 
 
 def run_inference_job(model_name, input_filename, num_inferences, num_threads,
-                      task_type, devices):
+                      task_type, delegates):
   """Runs classification or detection job with `num_threads`.
 
   Args:
@@ -54,28 +54,29 @@ def run_inference_job(model_name, input_filename, num_inferences, num_threads,
     num_inferences: int
     num_threads: int
     task_type: string, `classification` or `detection`
-    devices: list of string, all aviable edgtpu devices.
+    delegates: list of Delegate objects, all aviable edgtpu devices.
 
   Returns:
     double, wall time (in seconds) for running the job.
   """
 
-  def thread_job(model_name, input_filename, num_inferences, task_type, device):
+  def thread_job(model_name, input_filename, num_inferences, task_type,
+                 delegate):
     """Runs classification or detection job on one Python thread."""
     tid = threading.get_ident()
     logging.info('Thread: %d, # inferences: %d, model: %s', tid, num_inferences,
                  model_name)
 
-    interpreter = make_interpreter(
-        test_utils.test_data_path(model_name), device)
+    interpreter = edgetpu.make_interpreter(
+        benchmark_utils.test_data_path(model_name), delegate=delegate)
     interpreter.allocate_tensors()
-    with test_utils.test_image(input_filename) as img:
+    with benchmark_utils.test_image(input_filename) as img:
       if task_type == 'classification':
         resize_image = img.resize(common.input_size(interpreter), Image.NEAREST)
         common.set_input(interpreter, resize_image)
       elif task_type == 'detection':
-        common.set_resized_input(
-            interpreter, img.size, lambda size: img.resize(size, Image.NEAREST))
+        common.set_resized_input(interpreter, img.size,
+                                 lambda size: img.resize(size, Image.NEAREST))
       else:
         raise ValueError(
             'task_type should be classification or detection, but is given %s' %
@@ -97,7 +98,7 @@ def run_inference_job(model_name, input_filename, num_inferences, num_threads,
         threading.Thread(
             target=thread_job,
             args=(model_name, input_filename, num_inferences_per_thread,
-                  task_type, devices[i])))
+                  task_type, delegates[i])))
 
   for worker in workers:
     worker.start()
@@ -109,12 +110,13 @@ def run_inference_job(model_name, input_filename, num_inferences, num_threads,
 def main():
   num_inferences = 30000
   input_filename = 'cat.bmp'
-  all_tpus = list_edge_tpus()
+  all_tpus = edgetpu.list_edge_tpus()
   num_devices = len(all_tpus)
   num_pci_devices = sum(1 for device in all_tpus if device['type'] == 'pci')
   devices = ['pci:%d' % i for i in range(min(num_devices, num_pci_devices))] + [
       'usb:%d' % i for i in range(max(0, num_devices - num_pci_devices))
   ]
+  delegates = [edgetpu.load_edgetpu_delegate({'device': d}) for d in devices]
   model_names = [
       'mobilenet_v1_1.0_224_quant_edgetpu.tflite',
       'mobilenet_v2_1.0_224_quant_edgetpu.tflite',
@@ -140,7 +142,7 @@ def main():
     inference_costs_map[model_name] = [0.0] * num_devices
     for num_threads in range(num_devices, 0, -1):
       cost = run_inference_job(model_name, input_filename, num_inferences,
-                               num_threads, task_type, devices)
+                               num_threads, task_type, delegates)
       inference_costs_map[model_name][num_threads - 1] = cost
       logging.info('model: %s, # threads: %d, cost: %f seconds', model_name,
                    num_threads, cost)
@@ -155,6 +157,8 @@ def main():
 
 
 if __name__ == '__main__':
+  print('Python version: ', sys.version)
+  benchmark_utils.check_cpu_scaling_governor_status()
   logging.basicConfig(
       format=(
           '%(asctime)s.%(msecs)03d p%(process)s {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s'
