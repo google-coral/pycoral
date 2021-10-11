@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""Example using PyCoral to estimate a single human pose with Edge TPU MoveNet.
+"""Example using PyCoral to estimate a single human pose with Edge TPU MoveNet.
 
 To run this code, you must attach an Edge TPU to the host and
 install the Edge TPU runtime (`libedgetpu.so`) and `tflite_runtime`. For
@@ -26,8 +26,8 @@ Example usage:
 bash examples/install_requirements.sh movenet_pose_estimation.py
 
 python3 examples/movenet_pose_estimation.py \
-  --model test_data/movenet_single_pose_lightning_ptq_edgetpu.tflite  \
-  --input test_data/squat.bmp
+  --model ../test_data/movenet_single_pose_lightning_ptq_edgetpu.tflite  \
+  --input ../test_data/squat.bmp
 ```
 """
 
