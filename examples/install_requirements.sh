@@ -111,6 +111,7 @@ function get_all() {
   get_segmentation
   get_small_detection
   get_two_models
+  get_movenet
 }
 
 function usage() {
