@@ -96,6 +96,11 @@ function get_two_models() {
     "parrot.jpg"
 }
 
+function get_movenet() {
+  download \
+    "movenet_single_pose_lightning_ptq_edgetpu.tflite" \
+    "squat.bmp"
+}
 function get_all() {
   echo "Download all files..."
   get_backprop
@@ -106,6 +111,7 @@ function get_all() {
   get_segmentation
   get_small_detection
   get_two_models
+  get_movenet
 }
 
 function usage() {
@@ -151,6 +157,9 @@ function main() {
       ;;
     two_models_inference.py)
       get_two_models
+      ;;
+    movenet_pose_estimation.py)
+      get_movenet
       ;;
     *)
       usage
