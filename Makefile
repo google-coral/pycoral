@@ -16,21 +16,28 @@ PYTHON ?= $(shell which python3)
 MAKEFILE_DIR := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
 PY3_VER ?= $(shell $(PYTHON) -c "import sys;print('%d%d' % sys.version_info[:2])")
 OS := $(shell uname -s)
+ARCH := $(shell uname -p)
 
 ifeq ($(PYTHON),)
 $(error PYTHON must be set)
 endif
 
-# Allowed CPU values: k8, armv7a, aarch64, darwin
 ifeq ($(OS),Linux)
 CPU ?= k8
 else ifeq ($(OS),Darwin)
+ifeq ($(ARCH),arm)
+CPU ?= darwin_arm64
+DARWIN_CPU := darwin_arm64
+else
 CPU ?= darwin
+DARWIN_CPU := darwin_x86_64
+endif
 else
 $(error $(OS) is not supported)
 endif
-ifeq ($(filter $(CPU),k8 armv7a aarch64 darwin),)
-$(error CPU must be k8, armv7a, aarch64, or darwin)
+
+ifeq ($(filter $(CPU),k8 armv7a aarch64 darwin darwin_arm64),)
+$(error CPU must be k8, armv7a, aarch64, darwin, or darwin_arm64)
 endif
 
 # Allowed COMPILATION_MODE values: opt, dbg, fastbuild
@@ -46,7 +53,7 @@ COMMON_BAZEL_BUILD_FLAGS := --compilation_mode=$(COMPILATION_MODE) \
 
 BAZEL_BUILD_FLAGS_Linux := --linkopt=-L$(MAKEFILE_DIR)/libedgetpu_bin/direct/$(CPU) \
                            --linkopt=-l:libedgetpu.so.1
-BAZEL_BUILD_FLAGS_Darwin := --linkopt=-L$(MAKEFILE_DIR)/libedgetpu_bin/direct/$(CPU) \
+BAZEL_BUILD_FLAGS_Darwin := --linkopt=-L$(MAKEFILE_DIR)/libedgetpu_bin/direct/$(DARWIN_CPU) \
                             --linkopt=-ledgetpu.1
 
 ifeq ($(COMPILATION_MODE), opt)
@@ -72,7 +79,7 @@ else ifeq ($(CPU),armv7a)
 BAZEL_BUILD_FLAGS_Linux += --copt=-ffp-contract=off
 PY_WRAPPER_SUFFIX := arm-linux-gnueabihf.so
 PY_DIST_PLATFORM := linux-armv7l
-else ifeq ($(CPU), darwin)
+else ifeq ($(findstring darwin,$(CPU)),darwin)
 PY_WRAPPER_SUFFIX := darwin.so
 endif
 
