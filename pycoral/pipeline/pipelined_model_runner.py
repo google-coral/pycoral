@@ -80,9 +80,15 @@ class PipelinedModelRunner:
   def __del__(self):
     if self._runner:
       # Push empty request to stop the pipeline in case user forgot.
-      self.push({})
-      num_unconsumed = 0
+      try:
+        print("Push empty request to stop the pipeline...")
+        self.push({})
+      except RuntimeError:
+        print("The pipeline has already been closed successfully.")
+        return
+
       # Release any unconsumed tensors if any.
+      num_unconsumed = 0
       while self.pop():
         num_unconsumed += 1
       if num_unconsumed:
