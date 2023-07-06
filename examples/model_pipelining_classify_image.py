@@ -134,7 +134,7 @@ def main():
   size = common.input_size(runner.interpreters()[0])
   name = common.input_details(runner.interpreters()[0], 'name')
   image = np.array(
-      Image.open(args.input).convert('RGB').resize(size, Image.ANTIALIAS))
+      Image.open(args.input).convert('RGB').resize(size, Image.LANCZOS))
 
   def producer():
     for _ in range(args.count):

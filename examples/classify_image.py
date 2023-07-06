@@ -76,7 +76,7 @@ def main():
     raise ValueError('Only support uint8 input type.')
 
   size = common.input_size(interpreter)
-  image = Image.open(args.input).convert('RGB').resize(size, Image.ANTIALIAS)
+  image = Image.open(args.input).convert('RGB').resize(size, Image.LANCZOS)
 
   # Image data must go through two transforms before running inference:
   # 1. normalization: f = (input - mean) / std
