@@ -47,7 +47,7 @@ def segment_image(model_file, delegate, image_file, mask_file):
   interpreter.allocate_tensors()
 
   image = Image.open(test_utils.test_data_path(image_file)).resize(
-      common.input_size(interpreter), Image.ANTIALIAS)
+      common.input_size(interpreter), Image.LANCZOS)
   common.set_input(interpreter, image)
   interpreter.invoke()
 
