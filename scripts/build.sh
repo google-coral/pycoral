@@ -18,7 +18,8 @@ set -ex
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly MAKEFILE="${SCRIPT_DIR}/../Makefile"
 readonly DOCKER_CPUS="${DOCKER_CPUS:=k8 aarch64 armv7a}"
-PYTHON_VERSIONS="36 37 38 39"
+readonly DOCKER_IMAGE_OPTIONS="--progress=plain"
+PYTHON_VERSIONS="36 37 38 39 310"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -43,6 +44,7 @@ function docker_image {
     37) echo "debian:buster" ;;
     38) echo "ubuntu:20.04" ;;
     39) echo "debian:bullseye" ;;
+    310) echo "ubuntu:22.04" ;;
     *) echo "Unsupported python version: $1" 1>&2; exit 1 ;;
   esac
 }

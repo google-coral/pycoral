@@ -21,7 +21,7 @@ Depends: libc6,
          libstdc++6,
          python3-numpy,
          python3-pil,
-         python3-tflite-runtime (= 2.5.0.post1),
+         python3-tflite-runtime (= 2.7.0.post1),
          ${misc:Depends},
          ${python3:Depends}
 Description: Coral Python API
