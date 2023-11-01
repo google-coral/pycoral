@@ -8,3 +8,4 @@
 [submodule "libcoral"]
   path = libcoral
   url = https://github.com/oberluz/libcoral
+  branch = tensorflow_2_7
