@@ -1,9 +1,9 @@
 [submodule "libedgetpu"]
   path = libedgetpu
-  url = https://github.com/oberuz/libedgetpu
+  url = https://pycoral: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@github.com/oberuz/libedgetpu
 [submodule "test_data"]
   path = test_data
   url = https://github.com/google-coral/test_data
 [submodule "libcoral"]
   path = libcoral
-  url = https://github.com/oberluz/libcoral
+  url = https://pycoral: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@github.com/oberluz/libcoral
