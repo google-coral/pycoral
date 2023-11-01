@@ -1,6 +1,7 @@
 [submodule "libedgetpu"]
   path = libedgetpu
   url = https://github.com/oberluz/libedgetpu
+  branch = tensorflow_2_7
 [submodule "test_data"]
   path = test_data
   url = https://github.com/google-coral/test_data
