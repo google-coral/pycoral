@@ -20,15 +20,15 @@ check out the [PyCoral API reference](https://coral.ai/docs/reference/py/).
 
 Several Python examples are available in the `examples/` directory. For
 instructions, see the [examples README](
-https://github.com/google-coral/pycoral/tree/master/examples#pycoral-api-examples).
+https://github.com/oberluz/pycoral/tree/master/examples#pycoral-api-examples).
 
 
 ## Compilation
 
 When building this library yourself, it's critical that you have
 version-matching builds of
-[libcoral](https://github.com/google-coral/libcoral/tree/master) and
-[libedgetpu](https://github.com/google-coral/libedgetpu/tree/master)—notice
+[libcoral](https://github.com/oberluz/libcoral/tree/master) and
+[libedgetpu](https://github.com/oberluz/libedgetpu/tree/master)—notice
 these are submodules of the pycoral repo, and they all share the same
 `TENSORFLOW_COMMIT` value. So just be sure if you change one, you must change
 them all.
@@ -40,7 +40,7 @@ Or to build just this library, follow these steps:
 1.  Clone this repo and include submodules:
 
     ```
-    git clone --recurse-submodules https://github.com/google-coral/pycoral
+    git clone --recurse-submodules https://github.com/oberluz/pycoral
     ```
 
     If you already cloned without the submodules. You can add them with this:
