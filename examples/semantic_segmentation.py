@@ -109,9 +109,9 @@ def main():
   img = Image.open(args.input)
   if args.keep_aspect_ratio:
     resized_img, _ = common.set_resized_input(
-        interpreter, img.size, lambda size: img.resize(size, Image.ANTIALIAS))
+        interpreter, img.size, lambda size: img.resize(size, Image.LANCZOS))
   else:
-    resized_img = img.resize((width, height), Image.ANTIALIAS)
+    resized_img = img.resize((width, height), Image.LANCZOS)
     common.set_input(interpreter, resized_img)
 
   interpreter.invoke()

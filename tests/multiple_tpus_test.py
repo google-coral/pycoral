@@ -64,7 +64,7 @@ class MultipleTpusTest(unittest.TestCase):
           _, scale = common.set_resized_input(
               interpreter,
               img.size,
-              lambda size, image=img: image.resize(size, Image.ANTIALIAS))
+              lambda size, image=img: image.resize(size, Image.LANCZOS))
           interpreter.invoke()
           ret = detect.get_objects(
               interpreter, score_threshold=0.7, image_scale=scale)
