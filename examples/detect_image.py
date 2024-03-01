@@ -75,7 +75,7 @@ def main():
 
   image = Image.open(args.input)
   _, scale = common.set_resized_input(
-      interpreter, image.size, lambda size: image.resize(size, Image.ANTIALIAS))
+      interpreter, image.size, lambda size: image.resize(size, Image.LANCZOS))
 
   print('----INFERENCE TIME----')
   print('Note: The first inference is slow because it includes',

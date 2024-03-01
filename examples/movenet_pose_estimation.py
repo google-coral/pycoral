@@ -58,7 +58,7 @@ def main():
   interpreter.allocate_tensors()
 
   img = Image.open(args.input)
-  resized_img = img.resize(common.input_size(interpreter), Image.ANTIALIAS)
+  resized_img = img.resize(common.input_size(interpreter), Image.LANCZOS)
   common.set_input(interpreter, resized_img)
 
   interpreter.invoke()

@@ -33,7 +33,7 @@ def get_objects(model_file, delegate, image_file, score_threshold=0.0):
   interpreter.allocate_tensors()
   image = Image.open(test_utils.test_data_path(image_file))
   _, scale = common.set_resized_input(
-      interpreter, image.size, lambda size: image.resize(size, Image.ANTIALIAS))
+      interpreter, image.size, lambda size: image.resize(size, Image.LANCZOS))
   interpreter.invoke()
   return detect.get_objects(
       interpreter, score_threshold=score_threshold, image_scale=scale)
