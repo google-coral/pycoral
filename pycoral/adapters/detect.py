@@ -234,4 +234,4 @@ def get_objects(interpreter,
         bbox=BBox(xmin=xmin, ymin=ymin, xmax=xmax,
                   ymax=ymax).scale(sx, sy).map(int))
 
-  return [make(i) for i in range(count) if scores[i] >= score_threshold]
+  return [make(i) for i in range(len(scores)) if scores[i] >= score_threshold]
